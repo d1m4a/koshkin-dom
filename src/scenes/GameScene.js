@@ -44,8 +44,17 @@ export class GameScene extends Phaser.Scene {
         this.audio.stopPurr();
         this.markers.setOccupied(null);
       },
-      // Фоновые события идут только пока кот залип у стены.
-      onWallStare: (active) => (active ? this.ambient.arm() : this.ambient.disarm()),
+      // Пока кот сидит у стены, он тоже мурчит — тише, чем во сне,
+      // и с редким мяуканьем. Фоновые события идут только в это время.
+      onWallStare: (active) => {
+        if (active) {
+          this.ambient.arm();
+          this.audio.startPurr(2, CONFIG.PURR_SITTING_SCALE);
+        } else {
+          this.ambient.disarm();
+          this.audio.stopPurr();
+        }
+      },
       onMeow: () => this.audio.meow(),
     });
 

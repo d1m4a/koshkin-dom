@@ -110,10 +110,11 @@ export class AudioManager {
   }
 
   // Резкий старт мурчания звучит фальшиво — только через нарастание.
-  startPurr(comfort = 3) {
+  // scale — общий множитель: у сидящего кота мурчание тише, чем у спящего.
+  startPurr(comfort = 3, scale = 1) {
     this.ensureSounds();
     if (!this.layers.length) return;
-    const gain = 0.7 + 0.1 * comfort; // мягкое место мурчит громче
+    const gain = (0.7 + 0.1 * comfort) * scale; // мягкое место мурчит громче
     for (const layer of this.layers) {
       layer.target = layer.base * gain;
       clearTimeout(layer.stopTimer);
