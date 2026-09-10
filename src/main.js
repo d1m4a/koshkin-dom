@@ -24,5 +24,31 @@ const game = new Phaser.Game({
   scene: [BootScene, TitleScene, GameScene, UIScene],
 });
 
+// Разблокировка звука — прямо на событии DOM, в фазе перехвата.
+//
+// Внутри обработчика Phaser это не работает: Phaser разбирает ввод не в
+// момент клика, а позже, в своём цикле кадров, и браузер к тому времени
+// уже не считает происходящее действием пользователя — resume() молча
+// игнорируется, аудиоконтекст остаётся suspended и звука нет вообще.
+// Здесь же жест ещё живой.
+//
+// Слушатели снимаются только когда контекст действительно заработал:
+// первая попытка может не пройти, а вторая пройдёт.
+function unlockAudio() {
+  const sound = game.sound;
+  const ctx = sound && sound.context;
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  if (sound.locked && typeof sound.unlock === 'function') sound.unlock();
+  if (ctx.state === 'running') {
+    window.removeEventListener('pointerdown', unlockAudio, true);
+    window.removeEventListener('keydown', unlockAudio, true);
+    window.removeEventListener('touchstart', unlockAudio, true);
+  }
+}
+window.addEventListener('pointerdown', unlockAudio, true);
+window.addEventListener('keydown', unlockAudio, true);
+window.addEventListener('touchstart', unlockAudio, true);
+
 // Дев-режим: доступ к игре из консоли браузера, в сборку не попадает.
 if (import.meta.env.DEV) window.__game = game;

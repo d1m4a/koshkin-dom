@@ -26,6 +26,7 @@ export class UIScene extends Phaser.Scene {
     this.buildAlbum();
     this.buildControls();
     this.buildRotateHint();
+    this.buildAudioHint();
 
     this.game_.events.on('prompt-show', this.showHint, this);
     this.game_.events.on('prompt-move', this.moveHint, this);
@@ -111,6 +112,31 @@ export class UIScene extends Phaser.Scene {
         duration: 400,
         onComplete: () => this.toast.setVisible(false),
       });
+    });
+  }
+
+  // ------------------------------------------------- браузер не разрешил звук
+  //
+  // Если аудиоконтекст так и остался выключенным, игрок должен об этом
+  // узнать, а не гадать, почему кот мурчит беззвучно.
+  buildAudioHint() {
+    this.audioHint = this.add
+      .text(CONFIG.WIDTH / 2, 26, 'нажмите ещё раз, чтобы включить звук', {
+        fontFamily: 'Georgia, serif',
+        fontSize: '13px',
+        color: PALETTE.GRAPHITE_2,
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(30)
+      .setVisible(false);
+
+    this.time.addEvent({
+      delay: 500,
+      loop: true,
+      callback: () => {
+        const ctx = this.sound && this.sound.context;
+        this.audioHint.setVisible(!!ctx && ctx.state !== 'running');
+      },
     });
   }
 
