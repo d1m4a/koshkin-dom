@@ -14,9 +14,11 @@ export const PURR_DEEP = 'purr-deep';
 export const PURR_BREATH = 'purr-breath';
 export const AMB_HUM = 'amb-hum';
 export const AMB_CLOCK = 'amb-clock';
+// Два варианта мяуканья: одинаковое каждый раз звучит механически.
+export const MEOWS = ['meow-1', 'meow-2'];
 
 // Ключи и оба формата — этим же списком BootScene грузит файлы.
-export const AUDIO_FILES = [PURR_DEEP, PURR_BREATH, AMB_HUM, AMB_CLOCK].map((key) => ({
+export const AUDIO_FILES = [PURR_DEEP, PURR_BREATH, AMB_HUM, AMB_CLOCK, ...MEOWS].map((key) => ({
   key,
   urls: ['assets/audio/' + key + '.ogg', 'assets/audio/' + key + '.mp3'],
 }));
@@ -99,6 +101,17 @@ export class AudioManager {
         onUpdate: () => layer.sound.setVolume(layer.level.v * this.master),
       });
     }
+  }
+
+  // Мяуканье: короткий одиночный звук, без петли и без затухания.
+  // Голос звучит поверх фона, поэтому громкость считается от общей.
+  meow() {
+    const key = MEOWS[Math.floor(Math.random() * MEOWS.length)];
+    if (!this.scene.cache.audio.exists(key)) return;
+    const sound = this.scene.sound.add(key);
+    sound.setVolume(CONFIG.MEOW_VOLUME * this.master);
+    sound.once('complete', () => sound.destroy());
+    sound.play();
   }
 
   stopPurr() {

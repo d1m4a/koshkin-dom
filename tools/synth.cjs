@@ -42,6 +42,10 @@ const LOOPS = {
     // Гул еле дышит: ровная громкость выдаёт синтез.
     shape: (t) => 0.72 + 0.28 * Math.sin((2 * Math.PI * t) / 6),
   },
+  // Два варианта мяуканья: одинаковое каждый раз звучит механически.
+  'meow-1': { meow: true, duration: 0.8, f0: 500, fPeak: 720, fEnd: 430, open: 2600, seed: 5501 },
+  'meow-2': { meow: true, duration: 0.66, f0: 560, fPeak: 640, fEnd: 400, open: 2100, seed: 8802 },
+
   'amb-clock': {
     duration: 4,
     noise: 'white',
@@ -66,7 +70,51 @@ function mulberry32(seed) {
   };
 }
 
-function render({ duration, cutoff, highpass, seed, shape, noise = 'brown' }) {
+// Мяуканье — не шум, а тон: пилообразная волна с огибающей высоты и
+// открывающимся фильтром. Открытие фильтра к середине и есть переход
+// «мя» → «ау»: так меняется тембр, когда кот раскрывает рот.
+function renderMeow({ duration, f0, fPeak, fEnd, open, seed }) {
+  const n = Math.floor(SR * duration);
+  const out = new Float32Array(n);
+  const rnd = mulberry32(seed);
+  let phase = 0;
+  let lo = 0;
+
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const u = t / duration;
+
+    // Высота: быстрый подъём и долгий спад — так звучит вопросительное «мяу».
+    const pitch = u < 0.22 ? f0 + (fPeak - f0) * (u / 0.22) : fPeak + (fEnd - fPeak) * ((u - 0.22) / 0.78);
+    const vibrato = 1 + 0.02 * Math.sin(2 * Math.PI * 5.5 * t);
+    phase += (pitch * vibrato) / SR;
+    phase -= Math.floor(phase);
+
+    // Пила плюс капля шума на дыхание.
+    const saw = 2 * phase - 1;
+    const x = saw * 0.92 + (rnd() * 2 - 1) * 0.08;
+
+    // Фильтр открывается к середине и закрывается к концу — рот.
+    const mouth = Math.sin(Math.PI * Math.min(1, Math.max(0, u))) ** 0.7;
+    const cutoff = 620 + open * mouth;
+    const a = 1 - Math.exp((-2 * Math.PI * cutoff) / SR);
+    lo += a * (x - lo);
+
+    // Громкость: быстрая атака, долгий спад.
+    const env = Math.min(1, u / 0.07) * Math.pow(1 - u, 1.4);
+    out[i] = lo * env;
+  }
+
+  let peak = 0;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(out[i]));
+  const norm = peak > 0 ? 0.9 / peak : 1;
+  for (let i = 0; i < n; i++) out[i] *= norm;
+  return out;
+}
+
+function render(spec) {
+  if (spec.meow) return renderMeow(spec);
+  const { duration, cutoff, highpass, seed, shape, noise = 'brown' } = spec;
   const n = Math.floor(SR * duration);
   const fade = Math.floor(SR * 0.05);
   const raw = new Float32Array(n + fade);

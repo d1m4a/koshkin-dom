@@ -55,7 +55,12 @@ export function makeCatTextures(scene) {
   const bakeFront = (key, opts) => bakeTexture(scene, key, BODY_W, BODY_H, (g) => drawCatFront(g, opts));
   for (let i = 0; i < 4; i++) bakeFront('cat_frontsit_' + i, { sit: i / 3 });
   [0, 0.6, 1].forEach((breath, i) => bakeFront('cat_front_' + i, { breath }));
-  [0, 1, 0.35].forEach((blink, i) => bakeFront('cat_frontblink_' + i, { blink }));
+  // Моргание медленное: веки успевают опуститься и подняться.
+  [0, 0.45, 0.8, 1, 0.8, 0.4].forEach((blink, i) => bakeFront('cat_frontblink_' + i, { blink }));
+  // Мяуканье: рот раскрывается и закрывается, глаза при этом чуть щурятся.
+  [0, 0.45, 0.9, 1, 0.8, 0.45, 0.15].forEach((meow, i) =>
+    bakeFront('cat_frontmeow_' + i, { meow, blink: 0.3 * meow })
+  );
   [0, 1, 0.3].forEach((earTilt, i) => bakeFront('cat_frontear_' + i, { earTilt }));
   [0, 0.5, 1, 0.5].forEach((headTilt, i) => bakeFront('cat_fronthead_' + i, { headTilt }));
   [0, 1, 0.4, 0].forEach((tailFlick, i) => bakeFront('cat_fronttail_' + i, { tailFlick }));

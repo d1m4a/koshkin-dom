@@ -28,14 +28,17 @@ export const ANIMS = [
   { key: 'cat-front-sit', frames: range('cat_frontsit_', 4), frameRate: 8, repeat: 0 },
   { key: 'cat-front-rise', frames: range('cat_frontsit_', 4).reverse(), frameRate: 10, repeat: 0 },
   { key: 'cat-front', frames: ['cat_front_0', 'cat_front_1', 'cat_front_2', 'cat_front_1'], frameRate: 3, repeat: -1 },
-  { key: 'cat-front-blink', frames: range('cat_frontblink_', 3), frameRate: 12, repeat: 0 },
+  { key: 'cat-front-blink', frames: range('cat_frontblink_', 6), frameRate: 7, repeat: 0 },
+  { key: 'cat-front-meow', frames: range('cat_frontmeow_', 7), frameRate: 8, repeat: 0 },
   { key: 'cat-front-ear', frames: range('cat_frontear_', 3), frameRate: 12, repeat: 0 },
   { key: 'cat-front-head', frames: range('cat_fronthead_', 4), frameRate: 7, repeat: 0 },
   { key: 'cat-front-tail', frames: range('cat_fronttail_', 4), frameRate: 8, repeat: 0 },
 ];
 
 // Микрособытия у стены: раз в несколько секунд проигрывается одно из них.
-export const MICRO_EVENTS = ['cat-front-blink', 'cat-front-ear', 'cat-front-head', 'cat-front-tail'];
+// Моргание и мяуканье вынесены из микрособытий: у них свой темп, чаще
+// и независимо от растущего интервала залипания.
+export const MICRO_EVENTS = ['cat-front-ear', 'cat-front-head', 'cat-front-tail'];
 
 export function registerAnimations(scene) {
   for (const a of ANIMS) {

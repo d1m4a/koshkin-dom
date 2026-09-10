@@ -164,6 +164,8 @@ const STATES = {
       cat.wakeSeq = intent.seq;
       cat.microCount = 0;
       cat.microTimer = cat.nextMicroDelay();
+      cat.blinkTimer = cat.nextBlinkDelay();
+      cat.meowTimer = cat.nextMeowDelay();
       cat.backReady = false;
       cat.playOnce('cat-front-sit', () => {
         cat.backReady = true;
@@ -180,8 +182,28 @@ const STATES = {
       }
       if (!cat.backReady) return;
 
+      cat.blinkTimer -= dt;
+      cat.meowTimer -= dt;
       cat.microTimer -= dt;
-      if (cat.microTimer > 0) return;
+
+      // Одноразовые анимации не перебивают друг друга: если сейчас играет
+      // моргание или мяуканье, событие подождёт до возвращения в цикл.
+      const busy = cat.sprite.anims.currentAnim && cat.sprite.anims.currentAnim.key !== 'cat-front';
+
+      if (cat.meowTimer <= 0 && !busy) {
+        cat.meowTimer = cat.nextMeowDelay();
+        cat.deps.onMeow();
+        cat.playOnce('cat-front-meow', () => cat.sprite.play('cat-front'));
+        return;
+      }
+
+      if (cat.blinkTimer <= 0 && !busy) {
+        cat.blinkTimer = cat.nextBlinkDelay();
+        cat.playOnce('cat-front-blink', () => cat.sprite.play('cat-front'));
+        return;
+      }
+
+      if (cat.microTimer > 0 || busy) return;
 
       cat.microCount += 1;
       cat.microTimer = cat.nextMicroDelay();
@@ -212,6 +234,8 @@ export class Cat {
     this.wallX = 0;
     this.microCount = 0;
     this.microTimer = 0;
+    this.blinkTimer = 0;
+    this.meowTimer = 0;
     this.backReady = false;
     this.deps = deps;
 
@@ -264,6 +288,16 @@ export class Cat {
     if (intent.target === null) return 0;
     const dx = intent.target - this.x;
     return Math.abs(dx) <= CONFIG.ARRIVE_EPS ? 0 : Math.sign(dx);
+  }
+
+  // Моргание и мяуканье со временем не редеют: живой кот моргает часто,
+  // сколько бы он ни сидел.
+  nextBlinkDelay() {
+    return CONFIG.BLINK_MIN + Math.random() * (CONFIG.BLINK_MAX - CONFIG.BLINK_MIN);
+  }
+
+  nextMeowDelay() {
+    return CONFIG.MEOW_MIN + Math.random() * (CONFIG.MEOW_MAX - CONFIG.MEOW_MIN);
   }
 
   // Интервал микрособытия растёт с каждым разом, но не бесконечно.

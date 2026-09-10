@@ -105,9 +105,9 @@ async function main() {
   if (propsArg) {
     frames.push({ prop: 'heart' }, { prop: 'fly' });
   } else if (frontArg) {
-    frames.push({ front: { sit: 0.35 } }, { front: { sit: 0.7 } }, { front: { sit: 1, breath: 0.4 } },
-      { front: { sit: 1, blink: 1 } }, { front: { sit: 1, earTilt: 1 } }, { front: { sit: 1, headTilt: 1 } },
-      { front: { sit: 1, tailFlick: 1 } });
+    frames.push({ front: { sit: 1 } }, { front: { sit: 1, blink: 0.5 } }, { front: { sit: 1, blink: 1 } },
+      { front: { sit: 1, meow: 0.5 } }, { front: { sit: 1, meow: 1 } }, { front: { sit: 1, earTilt: 1 } },
+      { front: { sit: 1, headTilt: 1 } });
   } else if (poseArg) {
     for (const key of poseArg.slice(7).split(',')) {
       if (key.includes(':')) {

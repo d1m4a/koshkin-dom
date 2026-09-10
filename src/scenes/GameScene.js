@@ -46,6 +46,7 @@ export class GameScene extends Phaser.Scene {
       },
       // Фоновые события идут только пока кот залип у стены.
       onWallStare: (active) => (active ? this.ambient.arm() : this.ambient.disarm()),
+      onMeow: () => this.audio.meow(),
     });
 
     this.input1 = new InputController(this);

@@ -49,7 +49,8 @@ const rot = (p, cx, cy, a) => {
 // headTilt: -1..1 — наклон головы
 // tailFlick:0..1 — взмах хвостом
 // breath:   0..1 — дыхание
-export function drawCatFront(g, { sit = 1, blink = 0, earTilt = 0, headTilt = 0, tailFlick = 0, breath = 0 } = {}) {
+// meow:     0..1 — раскрытие рта
+export function drawCatFront(g, { sit = 1, blink = 0, earTilt = 0, headTilt = 0, tailFlick = 0, breath = 0, meow = 0 } = {}) {
   // Разворот к игроку изображается сжатием по горизонтали: кот как бы
   // поворачивается боком к нам. Отдельная анимация поворота не нужна.
   const sx = 0.35 + 0.65 * sit;
@@ -84,16 +85,36 @@ export function drawCatFront(g, { sit = 1, blink = 0, earTilt = 0, headTilt = 0,
   const bodyPts = BODY.map((p, i) => place(p, i >= 4 && i <= 6));
   pencilShape(g, smoothClosed(bodyPts, 6).map(([x, y]) => [x, y + PAD_Y]), { ...SKIN });
 
-  // Глаза: два светлых пятна. При моргании превращаются в щёлочки.
-  const eyeH = 4.2 * (1 - blink * 0.86);
+  // Глаза — узкие миндалины, а не круглые пятна: круг читается совой.
+  // Верхнее веко выше нижнего, углы острые, сплайн их сохраняет.
+  const rx = 6.6;
+  const up = 2.5 * (1 - blink * 0.92);
+  const down = 1.7 * (1 - blink * 0.92);
   for (const ex of [CX - 10, CX + 10]) {
     const pts = [];
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      pts.push([ex + Math.cos(a) * 5.4, HEAD_Y + Math.sin(a) * eyeH]);
+    const steps = 7;
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      pts.push([ex - rx + 2 * rx * u, HEAD_Y - Math.sin(Math.PI * u) * up]);
+    }
+    for (let i = steps; i >= 0; i--) {
+      const u = i / steps;
+      pts.push([ex - rx + 2 * rx * u, HEAD_Y + Math.sin(Math.PI * u) * down]);
     }
     const eye = pts.map((p) => place(p));
     pencilShape(g, smoothClosed(eye, 3).map(([x, y]) => [x, y + PAD_Y]), { ...EYE });
+  }
+
+  // Рот открывается только когда кот мяукает: в остальное время морда — глаза.
+  if (meow > 0.05) {
+    const mw = 2.6 + 1.4 * meow;
+    const mh = 1.2 + 3.2 * meow;
+    const pts = [];
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      pts.push([CX + Math.cos(a) * mw, HEAD_Y + 12 + Math.sin(a) * mh]);
+    }
+    pencilShape(g, smoothClosed(pts.map((p) => place(p)), 3).map(([x, y]) => [x, y + PAD_Y]), { ...EYE });
   }
 }
 
