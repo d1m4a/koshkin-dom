@@ -24,10 +24,12 @@ const part = (name) => CAT_SHAPE.parts.find((p) => p.name === name);
 // Разрез под лапы оставил в контуре прямую линию живота. Вшиваем вместо неё
 // пологую дугу прямо в полигон: наложенная сверху заплатка давала видимый шов.
 //
-// Концы дуги берутся не по краям среза, а по соседним точкам самого контура.
-// Раньше дуга начиналась ровно на линии живота, а бок корпуса приходил на
-// три пикселя выше — на стыке получалась вертикальная стенка с острым углом,
-// и на груди и на бедре торчали заметные выступы.
+// Дуга строится сплайном Эрмита по касательным соседних участков контура,
+// а не синусом между краями среза. Синус приходил на бедро почти
+// горизонтально, сплайн силуэта держал такой излом за угол — и на стыке
+// вырастала шишка. По касательной стык получается гладким с обеих сторон.
+const BELLY_SAG = 3;
+
 function withBelly(points, bellyY) {
   const n = points.length;
   const cut = points.map(([, y]) => y >= bellyY - 1.5);
@@ -36,19 +38,36 @@ function withBelly(points, bellyY) {
   let last = first;
   while (cut[(last + 1) % n]) last++;
 
-  const prev = points[(first - 1 + n) % n];
-  const next = points[(last + 1) % n];
-  // Провис отсчитывается от концов, чтобы низ живота остался там же, где был.
-  const sag = bellyY + 3 - (prev[1] + next[1]) / 2;
+  const at = (i) => points[((i % n) + n) % n];
+  const a = at(first - 1);
+  const b = at(last + 1);
+  const unit = (p, q) => {
+    const dx = q[0] - p[0];
+    const dy = q[1] - p[1];
+    const d = Math.hypot(dx, dy) || 1;
+    return [dx / d, dy / d];
+  };
+  const ta = unit(at(first - 2), a); // куда контур шёл, приходя к животу
+  const tb = unit(b, at(last + 2)); // куда пойдёт, уходя от живота
+
+  // Длина касательных подбирается так, чтобы низ живота остался на прежнем
+  // месте: в середине сплайн Эрмита даёт (ta.y - tb.y) / 8 от этой длины.
+  const drop = 0.125 * (ta[1] - tb[1]);
+  const span = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const len = drop > 0.05 ? (bellyY + BELLY_SAG - (a[1] + b[1]) / 2) / drop : span * 0.35;
 
   const out = [];
   for (let i = 0; i < n; i++) {
     if (i === first) {
-      for (let k = 1; k < 12; k++) {
-        const u = k / 12;
+      for (let k = 1; k < 14; k++) {
+        const u = k / 14;
+        const h00 = 2 * u ** 3 - 3 * u ** 2 + 1;
+        const h10 = u ** 3 - 2 * u ** 2 + u;
+        const h01 = -2 * u ** 3 + 3 * u ** 2;
+        const h11 = u ** 3 - u ** 2;
         out.push([
-          prev[0] + (next[0] - prev[0]) * u,
-          prev[1] + (next[1] - prev[1]) * u + Math.sin(Math.PI * u) * sag,
+          h00 * a[0] + h10 * ta[0] * len + h01 * b[0] + h11 * tb[0] * len,
+          h00 * a[1] + h10 * ta[1] * len + h01 * b[1] + h11 * tb[1] * len,
         ]);
       }
     }
