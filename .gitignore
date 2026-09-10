@@ -4,3 +4,4 @@ dist/
 *.local
 cat-game-itch.zip
 .claude/
+audio-src/

@@ -6,7 +6,8 @@
 //
 // Звук лежит файлами в public/assets/audio: OGG для всех и MP3 для Safari,
 // который OGG не понимает. Phaser сам выбирает поддерживаемый формат.
-// Исходник звука — не файлы, а tools/synth.cjs: он их и генерирует.
+// Исходник звука — не файлы, а tools/synth.cjs: он их и генерирует,
+// а свою запись можно подставить через tools/import-audio.cjs.
 
 import { CONFIG } from '../config.js';
 
@@ -24,7 +25,6 @@ export const AUDIO_FILES = [PURR_DEEP, PURR_BREATH, AMB_HUM, AMB_CLOCK, ...MEOWS
 }));
 
 export class AudioManager {
-
   constructor(scene) {
     this.scene = scene;
     this.layers = [];
@@ -40,13 +40,92 @@ export class AudioManager {
     scene.events.once('shutdown', () => reg.events.off('changedata-audioMaster', this.onMaster));
   }
 
-  setMaster(m) {
-    this.master = m;
-    for (const layer of this.layers) layer.sound.setVolume(layer.level.v * m);
-    for (const a of this.ambient) a.sound.setVolume(a.base * m);
+  // Плавность делается расписанием самого Web Audio, а не твином сцены.
+  //
+  // Твин крутится только когда идут кадры, а браузер душит кадры в фоновой
+  // или неактивной вкладке. Громкость тогда навсегда застревает на нуле —
+  // и звука нет вообще, хотя звук «играет». Расписание аудиоконтекста живёт
+  // на своём потоке и от кадров не зависит.
+  ramp(sound, target, ms) {
+    const node = sound.volumeNode;
+    const ctx = this.scene.sound.context;
+    const value = Math.max(0, target);
+    if (!node || !ctx) {
+      sound.setVolume(value);
+      return;
+    }
+    const now = ctx.currentTime;
+
+    // Откуда ведём. Читать node.gain.value нельзя: он обновляется только
+    // на следующем кванте обработки, и сразу после старта возвращает 1 —
+    // тогда «нарастание» превращается в спад с полной громкости, то есть
+    // в хлопок. Поэтому текущее значение считаем сами по своему расписанию.
+    const f = sound.__fade;
+    let from = value;
+    if (f) {
+      if (now <= f.t0) from = f.v0;
+      else if (now >= f.t1) from = f.v1;
+      else from = f.v0 + ((f.v1 - f.v0) * (now - f.t0)) / (f.t1 - f.t0);
+    } else {
+      from = node.gain.value;
+    }
+
+    node.gain.cancelScheduledValues(now);
+    node.gain.setValueAtTime(from, now);
+    if (ms > 0) node.gain.linearRampToValueAtTime(value, now + ms / 1000);
+    else node.gain.setValueAtTime(value, now);
+
+    sound.__fade = { t0: now, v0: from, t1: now + ms / 1000, v1: value };
+    // Держим конфиг звука в согласии с узлом: по нему считает сам Phaser.
+    sound.currentConfig.volume = value;
   }
 
-  // Фон включается один раз за игру и больше не трогается.
+  // Общая громкость из настроек: применяется ко всему, что сейчас звучит.
+  setMaster(m) {
+    this.master = m;
+    for (const layer of this.layers) this.ramp(layer.sound, (layer.target || 0) * m, 120);
+    for (const a of this.ambient) this.ramp(a.sound, a.base * m, 120);
+  }
+
+  ensureSounds() {
+    if (!this.available || this.layers.length) return;
+    // target — куда ведём громкость слоя; само ведение делает ramp().
+    this.layers = [
+      { sound: this.scene.sound.add(PURR_DEEP, { loop: true, volume: 0 }), base: CONFIG.PURR_VOLUME_DEEP, target: 0 },
+      { sound: this.scene.sound.add(PURR_BREATH, { loop: true, volume: 0 }), base: CONFIG.PURR_VOLUME_BREATH, target: 0 },
+    ];
+  }
+
+  // Резкий старт мурчания звучит фальшиво — только через нарастание.
+  startPurr(comfort = 3) {
+    this.ensureSounds();
+    if (!this.layers.length) return;
+    const gain = 0.7 + 0.1 * comfort; // мягкое место мурчит громче
+    for (const layer of this.layers) {
+      layer.target = layer.base * gain;
+      clearTimeout(layer.stopTimer);
+      if (!layer.sound.isPlaying) {
+        this.ramp(layer.sound, 0, 0);
+        layer.sound.play();
+      }
+      this.ramp(layer.sound, layer.target * this.master, CONFIG.PURR_FADE_IN);
+    }
+  }
+
+  stopPurr() {
+    if (!this.layers.length) return;
+    for (const layer of this.layers) {
+      layer.target = 0;
+      this.ramp(layer.sound, 0, CONFIG.PURR_FADE_OUT);
+      // setTimeout, а не таймер сцены: тот тоже ждёт кадров.
+      clearTimeout(layer.stopTimer);
+      layer.stopTimer = setTimeout(() => {
+        if (layer.target === 0 && layer.sound.isPlaying) layer.sound.stop();
+      }, CONFIG.PURR_FADE_OUT + 60);
+    }
+  }
+
+  // Фон включается один раз за игру и дальше только меняет общую громкость.
   startAmbient() {
     if (this.ambient.length || !this.scene.cache.audio.exists(AMB_HUM)) return;
     this.ambient = [
@@ -54,78 +133,34 @@ export class AudioManager {
       { key: AMB_CLOCK, base: CONFIG.AMBIENT_VOLUME_CLOCK },
     ].map(({ key, base }) => {
       const sound = this.scene.sound.add(key, { loop: true, volume: 0 });
-      sound.setVolume(0);
+      this.ramp(sound, 0, 0);
       sound.play();
-      const entry = { sound, base };
-      this.scene.tweens.add({
-        targets: { v: 0 },
-        v: base,
-        duration: 2500,
-        ease: 'Sine.easeOut',
-        onUpdate: (tw, t) => sound.setVolume(t.v * this.master),
-      });
-      return entry;
+      this.ramp(sound, base * this.master, 2500);
+      return { sound, base };
     });
   }
 
-  ensureSounds() {
-    if (!this.available || this.layers.length) return;
-    // level — собственный счётчик громкости. Напрямую твинить sound.volume
-    // нельзя: в Phaser 3.90 сеттер работает, а геттер всегда возвращает 1,
-    // и твин берёт стартовое значение оттуда. Появление звука превращалось
-    // в падение с полной громкости — тот самый резкий старт, которого
-    // не должно быть.
-    this.layers = [
-      { sound: this.scene.sound.add(PURR_DEEP, { loop: true, volume: 0 }), base: CONFIG.PURR_VOLUME_DEEP, level: { v: 0 } },
-      { sound: this.scene.sound.add(PURR_BREATH, { loop: true, volume: 0 }), base: CONFIG.PURR_VOLUME_BREATH, level: { v: 0 } },
-    ];
-  }
-
-  // Резкий старт мурчания звучит фальшиво — только через fade in.
-  startPurr(comfort = 3) {
-    this.ensureSounds();
-    if (!this.layers.length) return;
-    const gain = 0.7 + 0.1 * comfort; // мягкое место мурчит громче
-    for (const layer of this.layers) {
-      if (layer.tween) layer.tween.remove();
-      if (!layer.sound.isPlaying) {
-        layer.level.v = 0;
-        layer.sound.setVolume(0);
-        layer.sound.play();
-      }
-      layer.tween = this.scene.tweens.add({
-        targets: layer.level,
-        v: layer.base * gain,
-        duration: CONFIG.PURR_FADE_IN,
-        ease: 'Sine.easeOut',
-        onUpdate: () => layer.sound.setVolume(layer.level.v * this.master),
-      });
-    }
-  }
-
-  // Мяуканье: короткий одиночный звук, без петли и без затухания.
-  // Голос звучит поверх фона, поэтому громкость считается от общей.
+  // Мяуканье: короткий одиночный звук, без петли и без нарастания.
   meow() {
     const key = MEOWS[Math.floor(Math.random() * MEOWS.length)];
     if (!this.scene.cache.audio.exists(key)) return;
     const sound = this.scene.sound.add(key);
-    sound.setVolume(CONFIG.MEOW_VOLUME * this.master);
     sound.once('complete', () => sound.destroy());
     sound.play();
+    this.ramp(sound, CONFIG.MEOW_VOLUME * this.master, 0);
   }
 
-  stopPurr() {
-    if (!this.layers.length) return;
-    for (const layer of this.layers) {
-      if (layer.tween) layer.tween.remove();
-      layer.tween = this.scene.tweens.add({
-        targets: layer.level,
-        v: 0,
-        duration: CONFIG.PURR_FADE_OUT,
-        ease: 'Sine.easeIn',
-        onUpdate: () => layer.sound.setVolume(layer.level.v * this.master),
-        onComplete: () => layer.sound.stop(),
-      });
-    }
+  // Что реально приходит на узлы громкости Web Audio. Наши переменные могут
+  // говорить одно, а звучать может другое — эти строки показывают второе.
+  debugLines() {
+    const gain = (snd) => (snd && snd.volumeNode ? snd.volumeNode.gain.value : -1);
+    const fmt = (v) => (v < 0 ? '—' : v.toFixed(3));
+    const one = (snd) => fmt(gain(snd)) + (snd.isPlaying ? '' : ' стоп');
+    const ctx = this.scene.sound.context;
+    return [
+      'звук: мастер ' + this.master.toFixed(2) + '  контекст ' + (ctx ? ctx.state : '—'),
+      'мур ' + (this.layers.map((l) => one(l.sound)).join(' ') || '—') +
+        '   фон ' + (this.ambient.map((a) => one(a.sound)).join(' ') || '—'),
+    ];
   }
 }

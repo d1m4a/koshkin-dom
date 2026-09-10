@@ -113,6 +113,7 @@ export class GameScene extends Phaser.Scene {
           'target ' + (this.input1.target === null ? '—' : Math.round(this.input1.target)),
           'idle ' + this.input1.idleSeconds().toFixed(1) + ' с',
           'время ' + this.day.label + '  альбом ' + this.album.count + '/' + SPOTS.length,
+          ...this.audio.debugLines(),
         ].join('\n')
       );
     }
