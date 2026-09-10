@@ -1,6 +1,6 @@
 // Подстановка своих записей вместо синтезированных звуков.
 //
-//   node tools/import-audio.cjs <файл> <ключ> [--loop] [--trim] [--gain=1.2]
+//   node tools/import-audio.cjs <файл> <ключ> [--loop] [--trim] [--gain=1.2] [--presence]
 //
 // Пример: node tools/import-audio.cjs ~/purr.wav purr-deep --loop --trim
 //
@@ -12,6 +12,12 @@
 // Что делает: приводит к моно 48 кГц, нормализует, по --trim срезает тишину
 // по краям, по --loop делает петлю бесшовной (хвост подмешивается в начало)
 // и кладёт рядом .ogg и .mp3 — OGG для всех, MP3 для Safari.
+//
+// --presence (только для purr-deep): из той же записи делается второй слой
+// в purr-breath. Настоящее мурчание — это 25-50 Гц, а встроенные динамики
+// ноутбуков и телефонов ниже 200 Гц почти ничего не выдают: запись честно
+// играет, но её не слышно. Насыщение вытягивает гармоники основы в середину
+// и поднимает слышимую полосу примерно на 14 дБ.
 
 const fs = require('fs');
 const os = require('os');
@@ -94,6 +100,7 @@ function main() {
   if (loop) d = makeLoopable(d);
   if (gain !== 1) for (let i = 0; i < d.length; i++) d[i] = Math.max(-1, Math.min(1, d[i] * gain));
 
+  const presence = process.argv.includes('--presence');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cat-import-'));
   const wav = path.join(tmp, key + '.wav');
   fs.writeFileSync(wav, toWav(d));
@@ -108,6 +115,24 @@ function main() {
     '-y', '-loglevel', 'error', '-i', wav,
     '-c:a', 'libmp3lame', '-qscale:a', '4', '-write_xing', '1', mp3,
   ]);
+  // Слой присутствия из той же записи.
+  if (presence && key === 'purr-deep') {
+    const pw = path.join(tmp, 'presence.wav');
+    execFileSync(ffmpeg, [
+      '-y', '-loglevel', 'error', '-i', wav,
+      '-af', "aeval='tanh(6*val(0))':c=same,highpass=f=180,volume=3",
+      pw,
+    ]);
+    const pOgg = path.join(OUT, 'purr-breath.ogg');
+    const pMp3 = path.join(OUT, 'purr-breath.mp3');
+    execFileSync(ffmpeg, ['-y', '-loglevel', 'error', '-i', pw, '-c:a', 'libvorbis', '-qscale:a', '4', pOgg]);
+    execFileSync(ffmpeg, [
+      '-y', '-loglevel', 'error', '-i', pw,
+      '-c:a', 'libmp3lame', '-qscale:a', '4', '-write_xing', '1', pMp3,
+    ]);
+    console.log('  purr-breath ← слой присутствия из той же записи');
+  }
+
   fs.rmSync(tmp, { recursive: true, force: true });
 
   const kb = (f) => (fs.statSync(f).size / 1024).toFixed(0) + ' КБ';
