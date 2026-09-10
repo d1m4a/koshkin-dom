@@ -31,14 +31,15 @@ export const ANIMS = [
   { key: 'cat-front-blink', frames: range('cat_frontblink_', 6), frameRate: 7, repeat: 0 },
   { key: 'cat-front-meow', frames: range('cat_frontmeow_', 7), frameRate: 8, repeat: 0 },
   { key: 'cat-front-ear', frames: range('cat_frontear_', 3), frameRate: 12, repeat: 0 },
-  { key: 'cat-front-head', frames: range('cat_fronthead_', 4), frameRate: 7, repeat: 0 },
+  // Второе ухо ведёт медленнее первого: и кадров больше, и частота ниже.
+  { key: 'cat-front-ear2', frames: range('cat_frontear2_', 7), frameRate: 6, repeat: 0 },
   { key: 'cat-front-tail', frames: range('cat_fronttail_', 4), frameRate: 8, repeat: 0 },
 ];
 
 // Микрособытия у стены: раз в несколько секунд проигрывается одно из них.
 // Моргание и мяуканье вынесены из микрособытий: у них свой темп, чаще
 // и независимо от растущего интервала залипания.
-export const MICRO_EVENTS = ['cat-front-ear', 'cat-front-head', 'cat-front-tail'];
+export const MICRO_EVENTS = ['cat-front-ear', 'cat-front-ear2', 'cat-front-tail'];
 
 export function registerAnimations(scene) {
   for (const a of ANIMS) {

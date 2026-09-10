@@ -45,12 +45,12 @@ const rot = (p, cx, cy, a) => {
 
 // sit:      0 — кот ещё разворачивается (силуэт узкий), 1 — сидит
 // blink:    0..1 — веки
-// earTilt:  0..1 — дёрнулось правое ухо
-// headTilt: -1..1 — наклон головы
+// earR:     0..1 — дёрнулось правое ухо, резко
+// earL:     0..1 — повело левым ухом, медленнее правого
 // tailFlick:0..1 — взмах хвостом
 // breath:   0..1 — дыхание
 // meow:     0..1 — раскрытие рта
-export function drawCatFront(g, { sit = 1, blink = 0, earTilt = 0, headTilt = 0, tailFlick = 0, breath = 0, meow = 0 } = {}) {
+export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailFlick = 0, breath = 0, meow = 0 } = {}) {
   // Разворот к игроку изображается сжатием по горизонтали: кот как бы
   // поворачивается боком к нам. Отдельная анимация поворота не нужна.
   const sx = 0.35 + 0.65 * sit;
@@ -58,13 +58,12 @@ export function drawCatFront(g, { sit = 1, blink = 0, earTilt = 0, headTilt = 0,
   const lift = -breath * 1.2;
   const HEAD_Y = 62;
 
-  // isEar задаётся только для точек уха в контуре корпуса: раньше сюда
-  // попадали и точки глаза с теми же индексами, и глаз уезжал вместе с ухом.
-  const place = ([x, y], isEar = false) => {
+  // ear: 'L' или 'R' — только для точек соответствующего уха. Раньше сюда
+  // по индексам попадали и точки глаза, и глаз уезжал вместе с ухом.
+  const place = ([x, y], ear = null) => {
     let p = [x, y];
-    // Голова и уши наклоняются целиком, корпус стоит.
-    if (y < 84) p = rot(p, CX, HEAD_Y + 14, headTilt * 0.16);
-    if (isEar && earTilt) p = rot(p, 74, 46, -earTilt * 0.3);
+    if (ear === 'R' && earR) p = rot(p, 74, 46, -earR * 0.3);
+    if (ear === 'L' && earL) p = rot(p, 58, 46, earL * 0.26);
     return [CX + (p[0] - CX) * sx, FLOOR - (FLOOR - p[1]) * sy + lift];
   };
 
@@ -81,8 +80,8 @@ export function drawCatFront(g, { sit = 1, blink = 0, earTilt = 0, headTilt = 0,
   });
   pencilShape(g, smoothClosed([...left, ...right.reverse()], 4), { ...SKIN });
 
-  // Точки 4..6 — правое ухо.
-  const bodyPts = BODY.map((p, i) => place(p, i >= 4 && i <= 6));
+  // Точки 0..2 — левое ухо, 4..6 — правое.
+  const bodyPts = BODY.map((p, i) => place(p, i <= 2 ? 'L' : i >= 4 && i <= 6 ? 'R' : null));
   pencilShape(g, smoothClosed(bodyPts, 6).map(([x, y]) => [x, y + PAD_Y]), { ...SKIN });
 
   // Глаза — узкие миндалины, а не круглые пятна: круг читается совой.

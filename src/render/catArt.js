@@ -61,7 +61,8 @@ export function makeCatTextures(scene) {
   [0, 0.45, 0.9, 1, 0.8, 0.45, 0.15].forEach((meow, i) =>
     bakeFront('cat_frontmeow_' + i, { meow, blink: 0.3 * meow })
   );
-  [0, 1, 0.3].forEach((earTilt, i) => bakeFront('cat_frontear_' + i, { earTilt }));
-  [0, 0.5, 1, 0.5].forEach((headTilt, i) => bakeFront('cat_fronthead_' + i, { headTilt }));
+  // Правое ухо дёргается резко, левое ведёт медленно и шире по кадрам.
+  [0, 1, 0.3].forEach((earR, i) => bakeFront('cat_frontear_' + i, { earR }));
+  [0, 0.35, 0.7, 1, 0.75, 0.4, 0.15].forEach((earL, i) => bakeFront('cat_frontear2_' + i, { earL }));
   [0, 1, 0.4, 0].forEach((tailFlick, i) => bakeFront('cat_fronttail_' + i, { tailFlick }));
 }
