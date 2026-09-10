@@ -67,6 +67,7 @@ export class GameScene extends Phaser.Scene {
 
     this.scene.launch('UI');
 
+    this.testNote = null;
     this.debug = this.add
       .text(10, 8, '', {
         fontFamily: 'Consolas, monospace',
@@ -76,6 +77,12 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(CONFIG.DEPTH.UI)
       .setVisible(false);
+
+    // T — проверка звукового тракта в обход всей игровой логики.
+    this.input.keyboard.on('keydown-T', () => {
+      this.testNote = this.audio.test();
+      this.debug.setVisible(true);
+    });
 
     // F1 перехватывает браузер, поэтому отладка на клавише I.
     this.input.keyboard.on('keydown-I', () => this.debug.setVisible(!this.debug.visible));
@@ -114,6 +121,7 @@ export class GameScene extends Phaser.Scene {
           'idle ' + this.input1.idleSeconds().toFixed(1) + ' с',
           'время ' + this.day.label + '  альбом ' + this.album.count + '/' + SPOTS.length,
           ...this.audio.debugLines(),
+          this.testNote || 'T — проверить звук, I — скрыть',
         ].join('\n')
       );
     }

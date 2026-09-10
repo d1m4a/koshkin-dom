@@ -60,11 +60,15 @@ export class AudioManager {
     // на следующем кванте обработки, и сразу после старта возвращает 1 —
     // тогда «нарастание» превращается в спад с полной громкости, то есть
     // в хлопок. Поэтому текущее значение считаем сами по своему расписанию.
+    // Порядок проверок важен: мгновенная установка (ms = 0) даёт t0 === t1,
+    // и если сначала сравнивать с t0, мы возьмём старое значение вместо
+    // только что выставленного. Из-за этого фон начинал не с нуля, а с
+    // единицы и первые секунды звучал вдвое громче нужного.
     const f = sound.__fade;
     let from = value;
     if (f) {
-      if (now <= f.t0) from = f.v0;
-      else if (now >= f.t1) from = f.v1;
+      if (now >= f.t1) from = f.v1;
+      else if (now <= f.t0) from = f.v0;
       else from = f.v0 + ((f.v1 - f.v0) * (now - f.t0)) / (f.t1 - f.t0);
     } else {
       from = node.gain.value;
@@ -148,6 +152,25 @@ export class AudioManager {
     sound.once('complete', () => sound.destroy());
     sound.play();
     this.ramp(sound, CONFIG.MEOW_VOLUME * this.master, 0);
+  }
+
+  // Проверка тракта одной кнопкой: играем мурчание сразу и громко, минуя
+  // и нарастание, и состояние кота. Слышно — значит звук доходит, и дело
+  // в игровой логике; не слышно — дело в звуковом тракте или в системе.
+  test() {
+    this.ensureSounds();
+    const layer = this.layers[0];
+    if (!layer) return 'звука нет: файлы не загружены';
+    clearTimeout(layer.stopTimer);
+    if (!layer.sound.isPlaying) layer.sound.play();
+    layer.target = 0.9;
+    this.ramp(layer.sound, 0.9, 0);
+    layer.stopTimer = setTimeout(() => {
+      layer.target = 0;
+      this.ramp(layer.sound, 0, 300);
+      setTimeout(() => layer.sound.isPlaying && layer.sound.stop(), 400);
+    }, 3000);
+    return 'тест: мурчание на 0.9 три секунды';
   }
 
   // Что реально приходит на узлы громкости Web Audio. Наши переменные могут
