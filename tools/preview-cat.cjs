@@ -118,7 +118,8 @@ async function main() {
       } else frames.push({ poseKey: key });
     }
   } else {
-    for (let i = 0; i < 4; i++) frames.push({ t: i / 4, walking: true, breath: 0.3 });
+    const walkN = Number((process.argv.find((a) => a.startsWith('--walk=')) || '--walk=4').slice(7));
+    for (let i = 0; i < walkN; i++) frames.push({ t: i / walkN, walking: true, breath: 0.3 });
     frames.push({ t: 0, breath: 0 }); // стойка
   }
 

@@ -23,26 +23,36 @@ const part = (name) => CAT_SHAPE.parts.find((p) => p.name === name);
 
 // Разрез под лапы оставил в контуре прямую линию живота. Вшиваем вместо неё
 // пологую дугу прямо в полигон: наложенная сверху заплатка давала видимый шов.
+//
+// Концы дуги берутся не по краям среза, а по соседним точкам самого контура.
+// Раньше дуга начиналась ровно на линии живота, а бок корпуса приходил на
+// три пикселя выше — на стыке получалась вертикальная стенка с острым углом,
+// и на груди и на бедре торчали заметные выступы.
 function withBelly(points, bellyY) {
+  const n = points.length;
+  const cut = points.map(([, y]) => y >= bellyY - 1.5);
+  const first = cut.indexOf(true);
+  if (first < 0) return points;
+  let last = first;
+  while (cut[(last + 1) % n]) last++;
+
+  const prev = points[(first - 1 + n) % n];
+  const next = points[(last + 1) % n];
+  // Провис отсчитывается от концов, чтобы низ живота остался там же, где был.
+  const sag = bellyY + 3 - (prev[1] + next[1]) / 2;
+
   const out = [];
-  let arcDone = false;
-  for (let i = 0; i < points.length; i++) {
-    const [x, y] = points[i];
-    if (y < bellyY - 1.5) {
-      out.push([x, y]);
-      continue;
+  for (let i = 0; i < n; i++) {
+    if (i === first) {
+      for (let k = 1; k < 12; k++) {
+        const u = k / 12;
+        out.push([
+          prev[0] + (next[0] - prev[0]) * u,
+          prev[1] + (next[1] - prev[1]) * u + Math.sin(Math.PI * u) * sag,
+        ]);
+      }
     }
-    if (arcDone) continue;
-    arcDone = true;
-    // Все точки среза заменяем одной дугой от правого края к левому.
-    const flat = points.filter((p) => p[1] >= bellyY - 1.5);
-    const xs = flat.map((p) => p[0]);
-    const x1 = Math.max(...xs);
-    const x0 = Math.min(...xs);
-    for (let k = 0; k <= 12; k++) {
-      const u = k / 12;
-      out.push([x1 + (x0 - x1) * u, bellyY + Math.sin(Math.PI * u) * 3]);
-    }
+    if (!cut[i]) out.push(points[i]);
   }
   return out;
 }
