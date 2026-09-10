@@ -1,8 +1,11 @@
 # Сборка и публикация игры на GitHub Pages при каждом пуше в main.
 #
 # dist/ в репозиторий не коммитится: собирается здесь. Звук наоборот лежит
-# в репозитории готовыми файлами — ffmpeg на CI не нужен, поэтому он вынесен
-# в optionalDependencies и пропускается ключом --omit=optional.
+# в репозитории готовыми файлами, ffmpeg нужен только чтобы их перегенерировать.
+#
+# Ставится всё целиком, без --omit=optional: этим ключом отсекается не только
+# ffmpeg, но и нативные бинари rollup и esbuild — они тоже optional, и сборка
+# падает с «Cannot find module @rollup/rollup-linux-x64-gnu».
 
 name: deploy
 
@@ -32,7 +35,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci --omit=optional
+      - run: npm ci
       - run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
