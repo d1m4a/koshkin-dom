@@ -33,7 +33,7 @@ export const ANIMS = [
   { key: 'cat-front-ear', frames: range('cat_frontear_', 3), frameRate: 12, repeat: 0 },
   // Второе ухо ведёт медленнее первого: и кадров больше, и частота ниже.
   { key: 'cat-front-ear2', frames: range('cat_frontear2_', 7), frameRate: 6, repeat: 0 },
-  { key: 'cat-front-tail', frames: range('cat_fronttail_', 4), frameRate: 8, repeat: 0 },
+  { key: 'cat-front-tail', frames: range('cat_fronttail_', 28), frameRate: 12, repeat: 0 },
 ];
 
 // Микрособытия у стены: раз в несколько секунд проигрывается одно из них.

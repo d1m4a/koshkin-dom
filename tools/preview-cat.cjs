@@ -105,9 +105,11 @@ async function main() {
   if (propsArg) {
     frames.push({ prop: 'heart' }, { prop: 'fly' });
   } else if (frontArg) {
-    frames.push({ front: { sit: 1 } }, { front: { sit: 1, blink: 0.5 } }, { front: { sit: 1, blink: 1 } },
-      { front: { sit: 1, meow: 0.5 } }, { front: { sit: 1, meow: 1 } }, { front: { sit: 1, earR: 1 } },
-      { front: { sit: 1, earL: 1 } });
+    // хвост: показываем восемь фаз одного маха
+    const n = Number((process.argv.find((a) => a.startsWith('--frames=')) || '--frames=8').slice(9));
+    for (let i = 0; i < n; i++) {
+      frames.push({ front: { sit: 1, tailSwing: n === 1 ? 1 : -1 + (2 * i) / (n - 1) } });
+    }
   } else if (poseArg) {
     for (const key of poseArg.slice(7).split(',')) {
       if (key.includes(':')) {

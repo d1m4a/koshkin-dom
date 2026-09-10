@@ -32,10 +32,20 @@ const BODY = [
   [49, 82], [44, 70], [46, 57],
 ];
 
-// Хвост обёрнут вокруг правой лапы и лежит кончиком на полу.
+// Хвост лежит на полу и уходит вправо: сидящему коту им и метут.
+// Первая точка — основание у правой лапы, дальше по длине.
+// Координаты — в той же системе, что и BODY: сдвиг PAD_Y добавляется при
+// отрисовке. Без этого хвост висел на четыре пикселя выше пола, чем корпус.
 const TAIL = [
-  [98, 126, 5], [110, 124, 4.4], [119, 118, 3.6], [122, 108, 2.8], [119, 99, 2],
+  [92, 123, 4.4], [102, 123, 3.8], [111, 122, 3.1], [119, 121, 2.4], [127, 119, 1.7],
 ];
+const TAIL_BASE = TAIL[0];
+// Насколько кончик опускается, идя к зрителю, и приподнимается, уходя назад.
+// Ниже линии пола значит ближе — вся глубина, какая есть в ортогональной
+// проекции. Через силуэт хвост не проводится вовсе: тёмное по тёмному не
+// читается ни при каком порядке отрисовки, и на дальней фазе он честно
+// прячется за лапой, как и у настоящего кота.
+const TAIL_DIP = 6;
 
 const rot = (p, cx, cy, a) => {
   const dx = p[0] - cx;
@@ -47,10 +57,10 @@ const rot = (p, cx, cy, a) => {
 // blink:    0..1 — веки
 // earR:     0..1 — дёрнулось правое ухо, резко
 // earL:     0..1 — повело левым ухом, медленнее правого
-// tailFlick:0..1 — взмах хвостом
+// tailSwing:-1..1 — хвост метёт по полу, минус влево, плюс вправо
 // breath:   0..1 — дыхание
 // meow:     0..1 — раскрытие рта
-export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailFlick = 0, breath = 0, meow = 0 } = {}) {
+export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSwing = 0, breath = 0, meow = 0 } = {}) {
   // Разворот к игроку изображается сжатием по горизонтали: кот как бы
   // поворачивается боком к нам. Отдельная анимация поворота не нужна.
   const sx = 0.35 + 0.65 * sit;
@@ -67,18 +77,26 @@ export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailFl
     return [CX + (p[0] - CX) * sx, FLOOR - (FLOOR - p[1]) * sy + lift];
   };
 
-  // Хвост.
+  // Хвост метёт по полу. Смотрим на кота спереди, поэтому мах — это поворот
+  // в плоскости пола: хвост не поднимается, а укорачивается, уходя от зрителя
+  // или к нему, и снова вытягивается вбок. Отсюда косинус на длину и синус
+  // на подъём кончика.
+  const angle = tailSwing * 1.15;
+  const shorten = Math.cos(angle);
   const left = [];
   const right = [];
   TAIL.forEach(([x, y, r], i) => {
+    const along = x - TAIL_BASE[0]; // сколько прошли от основания
     const k = i / (TAIL.length - 1);
-    const fx = x + tailFlick * k * k * 9;
-    const fy = y - tailFlick * k * k * 6;
+    const fx = TAIL_BASE[0] + along * shorten;
+    // k в степени: хвост гнётся дугой, а не наклоняется палкой.
+    const fy = y + Math.sin(angle) * Math.pow(k, 1.5) * TAIL_DIP;
     const [px, py] = place([fx, fy]);
     left.push([px, py - r * sy]);
     right.push([px, py + r * sy]);
   });
-  pencilShape(g, smoothClosed([...left, ...right.reverse()], 4), { ...SKIN });
+  const tailShape = smoothClosed([...left, ...right.reverse()], 4).map(([x, y]) => [x, y + PAD_Y]);
+  pencilShape(g, tailShape, { ...SKIN });
 
   // Точки 0..2 — левое ухо, 4..6 — правое.
   const bodyPts = BODY.map((p, i) => place(p, i <= 2 ? 'L' : i >= 4 && i <= 6 ? 'R' : null));

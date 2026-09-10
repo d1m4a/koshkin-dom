@@ -64,5 +64,16 @@ export function makeCatTextures(scene) {
   // Правое ухо дёргается резко, левое ведёт медленно и шире по кадрам.
   [0, 1, 0.3].forEach((earR, i) => bakeFront('cat_frontear_' + i, { earR }));
   [0, 0.35, 0.7, 1, 0.75, 0.4, 0.15].forEach((earL, i) => bakeFront('cat_frontear2_' + i, { earL }));
-  [0, 1, 0.4, 0].forEach((tailFlick, i) => bakeFront('cat_fronttail_' + i, { tailFlick }));
+  // Хвост по полу: частота растёт квадратично, поэтому начало медленное,
+  // а к концу идут быстрые взмахи. Три полных цикла — так последний кадр
+  // приходится ровно на покой и хвост не дёргается обратно.
+  // Виляние по полу: медленно в начале, с разгоном к концу. Частота растёт
+  // как t², амплитуда — линейно, и на последнем кадре мах приходит в ноль,
+  // иначе петля щёлкала бы обратно в покой.
+  const TAIL_FRAMES = 28;
+  for (let i = 0; i < TAIL_FRAMES; i++) {
+    const t = i / (TAIL_FRAMES - 1);
+    const swing = Math.sin(2 * Math.PI * 2.5 * t * t) * (0.4 + 0.6 * t);
+    bakeFront('cat_fronttail_' + i, { tailSwing: swing });
+  }
 }
