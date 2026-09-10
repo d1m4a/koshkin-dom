@@ -103,19 +103,32 @@ const SKIN_FAR = { ...SKIN, color: HEX.GRAPHITE_2, fill: HEX.GRAPHITE_2 };
 // у передней локоть — вперёд; одинаковый изгиб у всех четырёх сразу читается
 // как насекомое.
 const LEGS = [
-  { x: LEG_ANCHORS[0][0] - 6, phase: 0.0, far: true, bend: 1 },
-  { x: LEG_ANCHORS[1][0] - 6, phase: 0.25, far: true, bend: -1 },
-  { x: LEG_ANCHORS[0][0] + 7, phase: 0.5, far: false, bend: 1 },
-  { x: LEG_ANCHORS[1][0] + 7, phase: 0.75, far: false, bend: -1 },
+  { x: LEG_ANCHORS[0][0] - 4, phase: 0.0, far: true, bend: 1, hind: true },
+  { x: LEG_ANCHORS[1][0] - 6, phase: 0.25, far: true, bend: -1, hind: false },
+  { x: LEG_ANCHORS[0][0] + 9, phase: 0.5, far: false, bend: 1, hind: true },
+  { x: LEG_ANCHORS[1][0] + 7, phase: 0.75, far: false, bend: -1, hind: false },
 ];
 
+// Полуширины звена по цепочке бедро → колено → стопа.
+// Задняя лапа у кота мощнее передней: бедро — крупная мышца, к скакательному
+// суставу она резко сходит на нет. Спереди почти одна кость, там прибавлять
+// нечего. Одинаковая толщина всех четырёх и читалась как ходули.
+const LEG_WIDTH = {
+  hind: [7.6, 6.3, 3.9, 2.9, 2.3],
+  fore: [5.4, 4.2, 3.4, 2.8, 2.3],
+};
+
 // Бедро прячется внутрь корпуса, иначе между лапой и телом видна бумага.
+// Заднее утоплено глубже переднего: оно толще, и на общей высоте его край
+// вылезал наружу через задний контур светлой шишкой.
 const HIP_INSET = 10;
+const HIP_INSET_HIND = 15;
 const HIP_Y = BELLY_Y - HIP_INSET;
-const LEG_REACH = FEET_Y - HIP_Y;
+const HIP_Y_HIND = BELLY_Y - HIP_INSET_HIND;
 // Кость чуть длиннее половины: иначе лапа выпрямляется в струну и упирается
 // в предел кинематики — ровно от этого лапы выглядели палками.
-const BONE = LEG_REACH * 0.58;
+const BONE = (FEET_Y - HIP_Y) * 0.58;
+const BONE_HIND = (FEET_Y - HIP_Y_HIND) * 0.58;
 const STRIDE = 12;
 const LIFT = 7;
 
@@ -152,23 +165,25 @@ function knee(hx, hy, px, py, bone, sign) {
 // вперёд и назад — кот стоял враскоряку на трёх лапах.
 function drawLeg(g, leg, t, dy, tuck = 0, walking = false) {
   const hx = leg.x;
-  const hy = HIP_Y + dy;
+  const hy = (leg.hind ? HIP_Y_HIND : HIP_Y) + dy;
+  const bone = leg.hind ? BONE_HIND : BONE;
   const [px0, py0] = walking ? pawTarget(leg.x, (t + leg.phase) % 1) : [leg.x, FEET_Y];
   // При укладывании стопа подтягивается к бедру — лапа складывается под кота.
   const px = px0 + (hx - px0) * tuck;
   const py = py0 + dy + (hy + 8 - (py0 + dy)) * tuck;
-  const [kx, ky] = knee(hx, hy, px, py, BONE, leg.bend);
+  const [kx, ky] = knee(hx, hy, px, py, bone, leg.bend);
 
   const tone = leg.far ? SKIN_FAR : SKIN;
 
   // Лапа рисуется одним сужающимся полигоном по цепочке бедро → колено → стопа.
   // Два отдельных прямоугольника давали видимый стык и читались механизмом.
+  const w = leg.hind ? LEG_WIDTH.hind : LEG_WIDTH.fore;
   const chain = [
-    [hx, hy, 5.4],
-    [(hx + kx) / 2, (hy + ky) / 2, 4.2],
-    [kx, ky, 3.4],
-    [(kx + px) / 2, (ky + py) / 2, 2.8],
-    [px, py - 2, 2.3],
+    [hx, hy, w[0]],
+    [(hx + kx) / 2, (hy + ky) / 2, w[1]],
+    [kx, ky, w[2]],
+    [(kx + px) / 2, (ky + py) / 2, w[3]],
+    [px, py - 2, w[4]],
   ];
   const left = [];
   const right = [];
