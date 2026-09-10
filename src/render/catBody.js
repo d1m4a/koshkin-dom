@@ -117,10 +117,14 @@ function knee(hx, hy, px, py, bone, sign) {
   return [mx + sign * (dy / d) * hgt, my - sign * (dx / d) * hgt];
 }
 
-function drawLeg(g, leg, t, dy, tuck = 0) {
+// walking = false — кот стоит: фаза шага не при чём, все четыре стопы
+// на полу. Раньше стойка брала кадр цикла ходьбы на t = 0, и в нём одна
+// лапа как раз висит в верхней точке выноса, а две другие разъехались
+// вперёд и назад — кот стоял враскоряку на трёх лапах.
+function drawLeg(g, leg, t, dy, tuck = 0, walking = false) {
   const hx = leg.x;
   const hy = HIP_Y + dy;
-  const [px0, py0] = pawTarget(leg.x, (t + leg.phase) % 1);
+  const [px0, py0] = walking ? pawTarget(leg.x, (t + leg.phase) % 1) : [leg.x, FEET_Y];
   // При укладывании стопа подтягивается к бедру — лапа складывается под кота.
   const px = px0 + (hx - px0) * tuck;
   const py = py0 + dy + (hy + 8 - (py0 + dy)) * tuck;
@@ -184,12 +188,12 @@ export function drawCatBody(g, { t = 0, breath = 0, sway = 2.2, walking = false 
   const off = PAD_Y + dy + bob;
 
   // Дальние лапы уходят под корпус.
-  for (const leg of LEGS) if (leg.far) drawLeg(g, leg, t, off);
+  for (const leg of LEGS) if (leg.far) drawLeg(g, leg, t, off, 0, walking);
 
   drawTailFrom(g, TAIL_SPINE.map(([x, y, r]) => [x + PAD_X, y, r]), t, off, walking ? sway : sway * 0.4);
   pencilShape(g, smoothClosed(BODY, 6).map(([x, y]) => [x + PAD_X, y + off]), { ...SKIN });
 
-  for (const leg of LEGS) if (!leg.far) drawLeg(g, leg, t, off);
+  for (const leg of LEGS) if (!leg.far) drawLeg(g, leg, t, off, 0, walking);
 }
 
 // --- переход между стойкой и позой ------------------------------------------
