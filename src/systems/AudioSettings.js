@@ -1,14 +1,16 @@
 // Громкость и выключение звука. Хранится между запусками там же,
 // где альбом — в localStorage, с той же защитой от запрета на данные сайтов.
 
-const KEY = 'cat-audio-v1';
+// Версия ключа поднята намеренно: старые сохранённые настройки могли
+// остаться с тихой громкостью, а по умолчанию теперь полная.
+const KEY = 'cat-audio-v2';
 const STEPS = 5;
 
 export class AudioSettings {
   constructor(game) {
     this.game = game;
     const saved = this.load();
-    this.level = saved.level === undefined ? 3 : saved.level; // 0..5
+    this.level = saved.level === undefined ? 5 : saved.level; // 0..5, по умолчанию полная
     this.muted = !!saved.muted;
     this.apply();
   }

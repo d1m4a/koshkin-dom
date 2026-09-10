@@ -32,12 +32,21 @@ export class AudioManager {
     this.available = scene.cache.audio.exists(PURR_DEEP);
 
     // Общая громкость приходит из настроек через реестр.
+    //
+    // Слушать надо оба события: Phaser шлёт setdata при ПЕРВОЙ записи ключа
+    // и changedata только при изменении существующего. Настройки создаются
+    // позже звука, поэтому на одном changedata первое значение терялось —
+    // и громкость навсегда оставалась на запасной.
     const reg = scene.registry;
     this.master = reg.get('audioMaster');
-    if (this.master === undefined) this.master = 0.6;
+    if (this.master === undefined) this.master = 1;
     this.onMaster = (parent, value) => this.setMaster(value);
+    reg.events.on('setdata-audioMaster', this.onMaster);
     reg.events.on('changedata-audioMaster', this.onMaster);
-    scene.events.once('shutdown', () => reg.events.off('changedata-audioMaster', this.onMaster));
+    scene.events.once('shutdown', () => {
+      reg.events.off('setdata-audioMaster', this.onMaster);
+      reg.events.off('changedata-audioMaster', this.onMaster);
+    });
   }
 
   // Плавность делается расписанием самого Web Audio, а не твином сцены.
