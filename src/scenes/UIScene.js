@@ -11,6 +11,8 @@ import { AudioSettings } from '../systems/AudioSettings.js';
 
 const CELL_W = 190;
 const CELL_H = 168;
+// Больше четырёх ячеек в строку не влезает в 960 пикселей кадра.
+const ALBUM_MAX_COLS = 4;
 
 export class UIScene extends Phaser.Scene {
   constructor() {
@@ -291,8 +293,13 @@ export class UIScene extends Phaser.Scene {
     resetSeed(20260404);
     this.album = this.add.container(0, 0).setVisible(false).setDepth(20);
 
-    const w = SPOTS.length * CELL_W + 60;
-    const h = CELL_H + 130;
+    // Мест стало больше, чем влезает в строку: раскладываем сеткой.
+    // Строк ровно столько, сколько нужно, а колонки делятся поровну — иначе
+    // последняя строка оставалась бы почти пустой.
+    const rows = Math.ceil(SPOTS.length / ALBUM_MAX_COLS);
+    const cols = Math.ceil(SPOTS.length / rows);
+    const w = cols * CELL_W + 60;
+    const h = rows * CELL_H + 130;
     const x = (CONFIG.WIDTH - w) / 2;
     const y = (CONFIG.HEIGHT - h) / 2;
 
@@ -334,8 +341,8 @@ export class UIScene extends Phaser.Scene {
 
     // По ячейке на каждое место. Неоткрытые — сплошной силуэт.
     this.cells = SPOTS.map((spot, i) => {
-      const cx = x + 30 + i * CELL_W + CELL_W / 2;
-      const cy = y + 92;
+      const cx = x + 30 + (i % cols) * CELL_W + CELL_W / 2;
+      const cy = y + 92 + Math.floor(i / cols) * CELL_H;
 
       const image = this.add.image(cx, cy + CELL_H / 2 - 30, `cat_sleep_${spot.pose}_3`).setOrigin(0.5, 1);
       const pose = this.add

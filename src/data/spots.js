@@ -37,6 +37,19 @@ export const SPOTS = [
     hint: 'Просто лечь',
   },
   {
+    id: 'cat-bed',
+    label: 'Лежанка',
+    poseLabel: 'Кругляш',
+    x: 1030,
+    surface: 14, // высота подстилки между бортиками
+    facing: 'right',
+    pose: 'round',
+    availableFrom: 2,
+    availableTo: 12, // своё место: ночь и утро
+    comfort: 5,
+    hint: 'Своя лежанка',
+  },
+  {
     id: 'windowsill',
     label: 'Комод под окном',
     poseLabel: 'Батон',

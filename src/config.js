@@ -73,7 +73,9 @@ export const CONFIG = {
   // над интерактивом. В опубликованной сборке их нет, на локальном стенде
   // есть. import.meta.env.DEV истинно только под npm run dev; npm run build
   // и npm run preview дают сборку, то есть метки выключены.
-  SHOW_SPOT_MARKERS: import.meta.env.DEV,
+  // Осторожно с формой записи: этот файл читают и оффлайн-инструменты
+  // обычным node, где import.meta.env нет вовсе.
+  SHOW_SPOT_MARKERS: import.meta.env?.DEV ?? false,
 };
 
 // Слой с scrollFactor f смещается медленнее камеры, поэтому его собственная

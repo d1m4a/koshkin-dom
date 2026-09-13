@@ -214,6 +214,36 @@ function drawRoom(g, W) {
   );
   hatch(g, 556, FLOOR_Y + 1, 188, 11, { spacing: 9, angle: 30, alpha: 0.3 });
 
+  // Лежанка — место «кругляш» (мировая координата 1030).
+  //
+  // Бортики разнесены заметно шире кота: он рисуется поверх слоя комнаты,
+  // и на узкой лежанке закрыл бы их собой — читалось бы, что он не в ней,
+  // а стоит перед ней. Профиль считается формулой, а не набором точек:
+  // pencilShape ломаную не сглаживает, а у круглой лежанки огранка видна.
+  const bedX = 1030;
+  const bedR = 84; // половина ширины по внешнему краю
+  const bedRim = 44; // высота бортика
+  const bedSeat = 14; // высота подстилки: на ней и лежит кот
+  // Верхушка бортика плоская, от RIM_A до RIM_B по ширине: без неё бортики
+  // выходили острыми и читались двумя холмами, а не валиком лежанки.
+  const RIM_A = 0.07;
+  const RIM_B = 0.19;
+  const ease = (t) => t * t * (3 - 2 * t);
+  const bed = [];
+  for (let i = 0; i <= 48; i++) {
+    const u = i / 48;
+    let h;
+    if (u < RIM_A) h = bedRim * ease(u / RIM_A);
+    else if (u < RIM_B) h = bedRim;
+    else if (u < 0.5) h = bedRim + (bedSeat - bedRim) * ease((u - RIM_B) / (0.5 - RIM_B));
+    else if (u < 1 - RIM_B) h = bedSeat + (bedRim - bedSeat) * ease((u - 0.5) / (0.5 - RIM_B));
+    else if (u < 1 - RIM_A) h = bedRim;
+    else h = bedRim * ease((1 - u) / RIM_A);
+    bed.push([bedX - bedR + 2 * bedR * u, FLOOR_Y - h]);
+  }
+  pencilShape(g, bed, { color: HEX.GRAPHITE_2, alpha: 0.85, width: 1.2, step: 26, fill: HEX.GRAPHITE_4, fillAlpha: 0.45 });
+  hatch(g, bedX - bedR + 8, FLOOR_Y - bedRim + 6, bedR * 2 - 16, bedRim - 6, { spacing: 9, angle: 34, alpha: 0.26 });
+
   // Низкий комод под окном — «подоконник» (мировая координата 1280).
   const chestX = 1150;
   const chestW = 280;
@@ -281,10 +311,10 @@ function drawRoom(g, W) {
   pencilShape(
     g,
     [
-      [900, FLOOR_Y],
-      [946, FLOOR_Y],
-      [938, FLOOR_Y - 18],
-      [908, FLOOR_Y - 18],
+      [836, FLOOR_Y],
+      [882, FLOOR_Y],
+      [874, FLOOR_Y - 18],
+      [844, FLOOR_Y - 18],
     ],
     { color: HEX.GRAPHITE_2, alpha: 0.85, width: 1.1, fill: HEX.GRAPHITE_4, fillAlpha: 0.4 }
   );
