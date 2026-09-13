@@ -39,7 +39,7 @@ export const SPOTS = [
   {
     id: 'cat-bed',
     label: 'Лежанка',
-    poseLabel: 'Кругляш',
+    poseLabel: 'Клубочек',
     x: 1030,
     surface: 14, // высота подстилки между бортиками
     facing: 'right',
