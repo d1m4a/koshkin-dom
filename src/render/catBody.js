@@ -99,22 +99,21 @@ const SKIN_FAR = { ...SKIN, color: HEX.GRAPHITE_2, fill: HEX.GRAPHITE_2 };
 
 // Четыре лапы: дальняя и ближняя пара с небольшим разносом по X.
 // Порядок фаз — как в раскадровке: задняя, потом передняя той же стороны.
-// bend: куда смотрит сустав. У задней лапы скакательный сустав уходит назад,
-// у передней локоть — вперёд; одинаковый изгиб у всех четырёх сразу читается
-// как насекомое.
+// hind — задняя пара: у неё своя, трёхзвенная кинематика (см. hindChain).
+// bend — куда выгнут единственный сустав передней лапы: локоть уходит назад.
 const LEGS = [
-  { x: LEG_ANCHORS[0][0] - 4, phase: 0.0, far: true, bend: 1, hind: true },
+  { x: LEG_ANCHORS[0][0] - 4, phase: 0.0, far: true, bend: -1, hind: true },
   { x: LEG_ANCHORS[1][0] - 6, phase: 0.25, far: true, bend: -1, hind: false },
-  { x: LEG_ANCHORS[0][0] + 9, phase: 0.5, far: false, bend: 1, hind: true },
+  { x: LEG_ANCHORS[0][0] + 9, phase: 0.5, far: false, bend: -1, hind: true },
   { x: LEG_ANCHORS[1][0] + 7, phase: 0.75, far: false, bend: -1, hind: false },
 ];
 
-// Полуширины звена по цепочке бедро → колено → стопа.
+// Полуширины звеньев по цепочке из пяти точек.
 // Задняя лапа у кота мощнее передней: бедро — крупная мышца, к скакательному
 // суставу она резко сходит на нет. Спереди почти одна кость, там прибавлять
 // нечего. Одинаковая толщина всех четырёх и читалась как ходули.
 const LEG_WIDTH = {
-  hind: [7.6, 6.3, 3.9, 2.9, 2.3],
+  hind: [7.6, 6.9, 3.4, 2.8, 2.3],
   fore: [5.4, 4.2, 3.4, 2.8, 2.3],
 };
 
@@ -128,7 +127,6 @@ const HIP_Y_HIND = BELLY_Y - HIP_INSET_HIND;
 // Кость чуть длиннее половины: иначе лапа выпрямляется в струну и упирается
 // в предел кинематики — ровно от этого лапы выглядели палками.
 const BONE = (FEET_Y - HIP_Y) * 0.58;
-const BONE_HIND = (FEET_Y - HIP_Y_HIND) * 0.58;
 const STRIDE = 12;
 const LIFT = 7;
 
@@ -146,8 +144,8 @@ function pawTarget(baseX, t) {
   return [baseX + forward * STRIDE, FEET_Y - lifted * LIFT];
 }
 
-// Двухзвенная кинематика: колено там, где сходятся две окружности.
-// sign задаёт, в какую сторону выгнут сустав.
+// Двухзвенная кинематика: сустав там, где сходятся две окружности.
+// sign задаёт, в какую сторону он выгнут: +1 — вперёд, к морде.
 function knee(hx, hy, px, py, bone, sign) {
   const dx = px - hx;
   const dy = py - hy;
@@ -159,6 +157,48 @@ function knee(hx, hy, px, py, bone, sign) {
   return [mx + sign * (dy / d) * hgt, my - sign * (dx / d) * hgt];
 }
 
+// Задняя лапа кота — не двухзвенная. От таза бедро идёт ВПЕРЁД к колену,
+// голень оттуда НАЗАД к скакательному суставу, и только от него плюсна
+// опускается к стопе. Наружу торчит назад именно скакательный сустав, пятка;
+// колено спрятано в паху, его почти не видно. Именно эту пятку и принимают
+// за «колено, гнущееся в обратную сторону».
+//
+// Двухзвенной лапой такой зигзаг не изобразить: она давала один сустав, и он
+// смотрел вперёд — задние лапы выглядели человеческими ногами.
+//
+// Считается с конца: сначала от стопы отмеряется плюсна, наклонённая назад,
+// это и есть скакательный сустав. Дальше обычная двухзвенная задача
+// таз → пятка, и её сустав — колено — сам уходит вперёд.
+const HOCK_LEN = 13; // длина плюсны, от стопы до пятки
+const HOCK_TILT = -0.42; // наклон плюсны назад от направления на таз, радианы
+const STIFLE_BULGE = 1.8; // запас длины костей: он и выносит колено вперёд
+
+function hindChain(hx, hy, px, py) {
+  const dx = px - hx;
+  const dy = py - hy;
+  const reach = Math.hypot(dx, dy) || 0.01;
+  // Плюсна укорачивается вместе с поджатой лапой, иначе при укладывании
+  // пятка уезжает выше таза и колено выворачивает наружу.
+  const m = Math.min(HOCK_LEN, reach * 0.42);
+  const ux = -dx / reach;
+  const uy = -dy / reach;
+  const ca = Math.cos(HOCK_TILT);
+  const sa = Math.sin(HOCK_TILT);
+  const ox = px + (ux * ca - uy * sa) * m;
+  const oy = py + (ux * sa + uy * ca) * m;
+  // Длина костей задаётся от расстояния, а не константой: так вынос колена
+  // держится почти одинаковым и в стойке, и на выносе лапы.
+  const d = Math.hypot(ox - hx, oy - hy);
+  const [sx, sy] = knee(hx, hy, ox, oy, d / 2 + STIFLE_BULGE, 1);
+  return [
+    [hx, hy],
+    [sx, sy],
+    [ox, oy],
+    [(ox + px) / 2, (oy + py) / 2],
+    [px, py - 2],
+  ];
+}
+
 // walking = false — кот стоит: фаза шага не при чём, все четыре стопы
 // на полу. Раньше стойка брала кадр цикла ходьбы на t = 0, и в нём одна
 // лапа как раз висит в верхней точке выноса, а две другие разъехались
@@ -166,25 +206,30 @@ function knee(hx, hy, px, py, bone, sign) {
 function drawLeg(g, leg, t, dy, tuck = 0, walking = false) {
   const hx = leg.x;
   const hy = (leg.hind ? HIP_Y_HIND : HIP_Y) + dy;
-  const bone = leg.hind ? BONE_HIND : BONE;
   const [px0, py0] = walking ? pawTarget(leg.x, (t + leg.phase) % 1) : [leg.x, FEET_Y];
   // При укладывании стопа подтягивается к бедру — лапа складывается под кота.
   const px = px0 + (hx - px0) * tuck;
   const py = py0 + dy + (hy + 8 - (py0 + dy)) * tuck;
-  const [kx, ky] = knee(hx, hy, px, py, bone, leg.bend);
 
   const tone = leg.far ? SKIN_FAR : SKIN;
 
-  // Лапа рисуется одним сужающимся полигоном по цепочке бедро → колено → стопа.
-  // Два отдельных прямоугольника давали видимый стык и читались механизмом.
+  // Лапа рисуется одним сужающимся полигоном по всей цепочке суставов.
+  // Отдельные прямоугольники давали видимый стык и читались механизмом.
   const w = leg.hind ? LEG_WIDTH.hind : LEG_WIDTH.fore;
-  const chain = [
-    [hx, hy, w[0]],
-    [(hx + kx) / 2, (hy + ky) / 2, w[1]],
-    [kx, ky, w[2]],
-    [(kx + px) / 2, (ky + py) / 2, w[3]],
-    [px, py - 2, w[4]],
-  ];
+  const joints = leg.hind
+    ? hindChain(hx, hy, px, py)
+    : (() => {
+        const [kx, ky] = knee(hx, hy, px, py, BONE, leg.bend);
+        return [
+          [hx, hy],
+          [(hx + kx) / 2, (hy + ky) / 2],
+          [kx, ky],
+          [(kx + px) / 2, (ky + py) / 2],
+          [px, py - 2],
+        ];
+      })();
+  const chain = joints.map(([x, y], i) => [x, y, w[i]]);
+
   const left = [];
   const right = [];
   for (let i = 0; i < chain.length; i++) {
