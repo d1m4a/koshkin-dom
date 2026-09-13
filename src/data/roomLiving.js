@@ -138,6 +138,8 @@ function drawWall(g, W) {
   picture(1640, 138, 132, 96);
   picture(1790, 168, 74, 66);
 
+  drawClock(g);
+
   // Настенная лампа.
   pencilLine(g, 2020, rail + 6, 2020, 196, { color: HEX.GRAPHITE_2, alpha: 0.8, width: 1.1, passes: 1 });
   pencilShape(
@@ -170,6 +172,65 @@ function drawWall(g, W) {
   hatch(g, 60, rail + 20, 220, 190, { spacing: 16, angle: 62, alpha: 0.12, color: HEX.GRAPHITE_4 });
   hatch(g, 1180, rail + 24, 300, 160, { spacing: 16, angle: 62, alpha: 0.1, color: HEX.GRAPHITE_4 });
   hatch(g, 1960, rail + 40, 260, 200, { spacing: 16, angle: 62, alpha: 0.12, color: HEX.GRAPHITE_4 });
+}
+
+// ------------------------------------------------------- часы с маятником
+// Висят на стене между батареей и окном: корпус с циферблатом, под ним
+// открытый маятник. Координаты — в системе слоя стены (он едет со скоростью
+// 0.8), поэтому маятник ставится этими же числами и с тем же scrollFactor.
+//
+// Корпус запекается в текстуру стены, а маятник — отдельная картинка:
+// он единственное, что здесь двигается (см. systems/PendulumClock.js).
+export const CLOCK = {
+  x: 665,
+  pivotY: 226, // точка подвеса маятника
+  penW: 30,
+  penH: 100,
+  penPivot: 4, // отступ подвеса от верха текстуры маятника
+  penRod: 82, // длина штанги от подвеса до центра линзы
+  penBob: 11, // радиус линзы
+};
+
+function drawClock(g) {
+  const { x } = CLOCK;
+  const line = { color: HEX.GRAPHITE_2, alpha: 0.9, width: 1.2 };
+
+  // Карниз над корпусом.
+  pencilShape(
+    g,
+    [
+      [x - 37, 142],
+      [x + 37, 142],
+      [x + 30, 132],
+      [x - 30, 132],
+    ],
+    { ...line, fill: HEX.GRAPHITE_4, fillAlpha: 0.5 }
+  );
+
+  // Корпус.
+  // Заливка бумагой: без неё сквозь корпус просвечивают полосы обоев
+  // и корпус читается не предметом, а рамкой.
+  pencilRect(g, x - 31, 142, 62, 82, { ...line, width: 1.3, fill: HEX.PAPER, fillAlpha: 0.92 });
+  hatch(g, x - 29, 144, 58, 78, { spacing: 11, angle: 64, alpha: 0.18 });
+
+  // Циферблат: светлый круг поверх штриховки корпуса, чтобы читался.
+  pencilCircle(g, x, 181, 23, { ...line, fill: HEX.PAPER, fillAlpha: 0.95 });
+  pencilCircle(g, x, 181, 19, { color: HEX.GRAPHITE_3, alpha: 0.6, width: 0.8, passes: 1 });
+  // Стрелки: без делений, они на таком размере сольются в кашу.
+  pencilLine(g, x, 181, x + 11, 174, { color: HEX.GRAPHITE_1, alpha: 0.9, width: 1.3, passes: 1 });
+  pencilLine(g, x, 181, x - 4, 167, { color: HEX.GRAPHITE_1, alpha: 0.9, width: 1.1, passes: 1 });
+
+  // Подвес под корпусом: маятник должен из чего-то выходить.
+  pencilShape(
+    g,
+    [
+      [x - 9, 224],
+      [x + 9, 224],
+      [x + 5, CLOCK.pivotY + 4],
+      [x - 5, CLOCK.pivotY + 4],
+    ],
+    { ...line, width: 1.1, fill: HEX.GRAPHITE_4, fillAlpha: 0.5 }
+  );
 }
 
 // -------------------------------------------------- пол, мебель, план кота

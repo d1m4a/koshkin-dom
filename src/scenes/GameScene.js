@@ -14,6 +14,7 @@ import { IdleSystem } from '../systems/IdleSystem.js';
 import { AmbientEvents } from '../systems/AmbientEvents.js';
 import { DayCycle } from '../systems/DayCycle.js';
 import { AlbumStore } from '../systems/AlbumStore.js';
+import { PendulumClock } from '../systems/PendulumClock.js';
 import { Cat, STATE } from '../entities/Cat.js';
 
 export class GameScene extends Phaser.Scene {
@@ -30,6 +31,7 @@ export class GameScene extends Phaser.Scene {
     this.audio = new AudioManager(this);
     this.markers = new SpotMarkers(this, this.spots);
     this.ambient = new AmbientEvents(this);
+    this.clock = new PendulumClock(this);
 
     this.cat = new Cat(this, 300, {
       spots: this.spots,
@@ -112,6 +114,7 @@ export class GameScene extends Phaser.Scene {
     this.idle.update(this.cat.state, [STATE.IDLE_STAND, STATE.PROMPT]);
     this.ambient.update(dt);
     this.markers.update(time);
+    this.clock.update(time, this.audio.clockPhase());
     this.layers.update(this.cameras.main);
 
     if (this.cat.state === STATE.PROMPT) {

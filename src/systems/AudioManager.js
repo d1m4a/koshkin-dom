@@ -150,8 +150,20 @@ export class AudioManager {
       this.ramp(sound, 0, 0);
       sound.play();
       this.ramp(sound, base * this.master, 2500);
-      return { sound, base };
+      return { key, sound, base };
     });
+  }
+
+  // Где сейчас петля тиканья, в секундах. По ней качается маятник часов:
+  // свой таймер разошёлся бы со звуком за минуты. null — тиканья нет.
+  clockPhase() {
+    const a = this.ambient.find((x) => x.key === AMB_CLOCK);
+    if (!a || !a.sound.isPlaying) return null;
+    // Остаток по длине буфера обязателен: seek у Phaser считает время от
+    // начала воспроизведения и на петле не обнуляется. Если кодек добавил
+    // к четырём секундам лишние миллисекунды, без остатка щелчки уезжали бы
+    // от маятника на полпериода за несколько минут.
+    return a.sound.seek % (a.sound.duration || 4);
   }
 
   // Мяуканье: короткий одиночный звук, без петли и без нарастания.

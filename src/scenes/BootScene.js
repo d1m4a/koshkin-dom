@@ -15,6 +15,7 @@ import { makeCatTextures } from '../render/catArt.js';
 import { makePropTextures } from '../render/props.js';
 import { registerAnimations } from '../data/animations.js';
 import { bakeTexture } from '../render/pencil.js';
+import { PendulumClock } from '../systems/PendulumClock.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -53,6 +54,7 @@ export class BootScene extends Phaser.Scene {
         registerAnimations(this);
       },
       () => makePropTextures(this),
+      () => PendulumClock.bake(this),
       ...LAYERS.map((spec) => () => bakeTexture(this, spec.key, spec.size[0], spec.size[1], spec.draw)),
     ];
     this.done = 0;
