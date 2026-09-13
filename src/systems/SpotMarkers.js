@@ -1,5 +1,10 @@
 // Сердечки над местами для сна и таймер ожидания под ними.
 //
+// Только для разработки: CONFIG.SHOW_SPOT_MARKERS выключает их в собранной
+// игре. Выключение сделано здесь, а не в GameScene, чтобы сцене не пришлось
+// проверять на пустоту каждый вызов — при выключенных метках список просто
+// пуст, и update с setOccupied ничего не делают.
+//
 // Метки живут в мировых координатах и едут вместе с полом, а не висят
 // на экране: они принадлежат комнате.
 //
@@ -35,7 +40,7 @@ export class SpotMarkers {
     this.spots = spots;
     this.hiddenFor = null; // место, на котором кот прямо сейчас лежит
 
-    this.marks = spots.spots.map((spot) => {
+    this.marks = (CONFIG.SHOW_SPOT_MARKERS ? spots.spots : []).map((spot) => {
       const baseY = CONFIG.FLOOR_Y - (spot.surface || 0) - 34;
       const img = scene.add
         .image(spot.x, baseY, HEART_KEY)
