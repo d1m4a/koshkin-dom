@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config.js';
 import { PALETTE } from '../palette.js';
-import { LAYERS } from '../data/roomLiving.js';
+import { LAYERS, CLOCK } from '../data/roomLiving.js';
 import { SPOTS } from '../data/spots.js';
 import { ParallaxLayers } from '../systems/ParallaxLayers.js';
 import { CameraRig } from '../systems/CameraRig.js';
@@ -58,6 +58,23 @@ export class GameScene extends Phaser.Scene {
         }
       },
       onMeow: () => this.audio.meow(),
+      // Куда встать, чтобы оказаться ровно под часами.
+      //
+      // Часы едут со скоростью стены, медленнее пола, поэтому нужная мировая
+      // точка зависит от положения камеры. А камера остановится тогда, когда
+      // кот упрётся в край мёртвой зоны — в какой именно, решает направление
+      // подхода. Обе неизвестные связаны, и уравнение решается сразу:
+      //   экран кота = экран часов при scrollX = x + dir*(опережение - полузона) - ширина/2.
+      clockStand: (from) => {
+        const { WIDTH, PARALLAX, CAM_DEADZONE_W, CAM_LOOK_AHEAD } = CONFIG;
+        const at = (dir) =>
+          (CLOCK.x + (1 - PARALLAX.WALL) * (dir * (CAM_LOOK_AHEAD - CAM_DEADZONE_W / 2) - WIDTH / 2)) /
+          PARALLAX.WALL;
+        const right = at(1);
+        const left = at(-1);
+        return from < right ? right : from > left ? left : from;
+      },
+      pendulumLook: () => this.clock.look(),
     });
 
     this.input1 = new InputController(this);

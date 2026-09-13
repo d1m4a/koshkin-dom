@@ -47,6 +47,10 @@ const TAIL_BASE = TAIL[0];
 // прячется за лапой, как и у настоящего кота.
 const TAIL_DIP = 6;
 
+// Насколько уезжают вбок глаза и верх головы при взгляде в сторону.
+const EYE_LOOK = 3.4;
+const HEAD_SWAY = 1.8;
+
 const rot = (p, cx, cy, a) => {
   const dx = p[0] - cx;
   const dy = p[1] - cy;
@@ -58,9 +62,11 @@ const rot = (p, cx, cy, a) => {
 // earR:     0..1 — дёрнулось правое ухо, резко
 // earL:     0..1 — повело левым ухом, медленнее правого
 // tailSwing:-1..1 — хвост метёт по полу, минус влево, плюс вправо
+// look:     -1..1 — кот провожает взглядом что-то, ходящее из стороны
+//                  в сторону: глаза уезжают вбок, голова чуть ведёт следом
 // breath:   0..1 — дыхание
 // meow:     0..1 — раскрытие рта
-export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSwing = 0, breath = 0, meow = 0 } = {}) {
+export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSwing = 0, breath = 0, meow = 0, look = 0 } = {}) {
   // Разворот к игроку изображается сжатием по горизонтали: кот как бы
   // поворачивается боком к нам. Отдельная анимация поворота не нужна.
   const sx = 0.35 + 0.65 * sit;
@@ -98,8 +104,11 @@ export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSw
   const tailShape = smoothClosed([...left, ...right.reverse()], 4).map(([x, y]) => [x, y + PAD_Y]);
   pencilShape(g, tailShape, { ...SKIN });
 
-  // Точки 0..2 — левое ухо, 4..6 — правое.
-  const bodyPts = BODY.map((p, i) => place(p, i <= 2 ? 'L' : i >= 4 && i <= 6 ? 'R' : null));
+  // Точки 0..2 — левое ухо, 3 — макушка, 4..6 — правое. Взгляд вбок ведёт
+  // за собой верх головы: одни глаза без этого читаются косоглазием.
+  const bodyPts = BODY.map((p, i) =>
+    place(i <= 6 ? [p[0] + look * HEAD_SWAY, p[1]] : p, i <= 2 ? 'L' : i >= 4 && i <= 6 ? 'R' : null)
+  );
   pencilShape(g, smoothClosed(bodyPts, 6).map(([x, y]) => [x, y + PAD_Y]), { ...SKIN });
 
   // Глаза — узкие миндалины, а не круглые пятна: круг читается совой.
@@ -107,7 +116,7 @@ export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSw
   const rx = 6.6;
   const up = 2.5 * (1 - blink * 0.92);
   const down = 1.7 * (1 - blink * 0.92);
-  for (const ex of [CX - 10, CX + 10]) {
+  for (const ex of [CX - 10 + look * EYE_LOOK, CX + 10 + look * EYE_LOOK]) {
     const pts = [];
     const steps = 7;
     for (let i = 0; i <= steps; i++) {

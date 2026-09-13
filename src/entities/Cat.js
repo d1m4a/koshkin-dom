@@ -7,7 +7,7 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config.js';
 import { CAT_FOOT_OFFSET } from '../render/catBody.js';
-import { MICRO_EVENTS, poseAnims } from '../data/animations.js';
+import { MICRO_EVENTS, poseAnims, lookFrame } from '../data/animations.js';
 
 export const STATE = {
   IDLE_STAND: 'IDLE_STAND',
@@ -19,6 +19,8 @@ export const STATE = {
   GOING_TO_WALL: 'GOING_TO_WALL',
   WALL_STARE: 'WALL_STARE',
   WALL_RISE: 'WALL_RISE',
+  GOING_TO_CLOCK: 'GOING_TO_CLOCK',
+  CLOCK_WATCH: 'CLOCK_WATCH',
 };
 
 const STATES = {
@@ -163,6 +165,7 @@ const STATES = {
     enter(cat, intent) {
       cat.wakeSeq = intent.seq;
       cat.microCount = 0;
+      cat.stareTime = 0;
       cat.microTimer = cat.nextMicroDelay();
       cat.blinkTimer = cat.nextBlinkDelay();
       cat.meowTimer = cat.nextMeowDelay();
@@ -182,6 +185,7 @@ const STATES = {
       }
       if (!cat.backReady) return;
 
+      cat.stareTime += dt;
       cat.blinkTimer -= dt;
       cat.meowTimer -= dt;
       cat.microTimer -= dt;
@@ -189,6 +193,13 @@ const STATES = {
       // Одноразовые анимации не перебивают друг друга: если сейчас играет
       // моргание или мяуканье, событие подождёт до возвращения в цикл.
       const busy = cat.sprite.anims.currentAnim && cat.sprite.anims.currentAnim.key !== 'cat-front';
+
+      // Досидел своё — встаёт и идёт смотреть на маятник часов.
+      if (cat.stareTime >= CONFIG.CLOCK_WATCH_AFTER && !busy) {
+        cat.riseTo = STATE.GOING_TO_CLOCK;
+        cat.setState(STATE.WALL_RISE);
+        return;
+      }
 
       if (cat.meowTimer <= 0 && !busy) {
         cat.meowTimer = cat.nextMeowDelay();
@@ -217,10 +228,74 @@ const STATES = {
 
   [STATE.WALL_RISE]: {
     enter(cat) {
-      cat.playOnce('cat-front-rise', () => cat.setState(STATE.IDLE_STAND));
+      // riseTo — куда идти после подъёма. По умолчанию управление
+      // возвращается игроку, но кот встаёт и сам, чтобы пойти к часам.
+      const next = cat.riseTo || STATE.IDLE_STAND;
+      cat.riseTo = null;
+      cat.playOnce('cat-front-rise', () => cat.setState(next));
     },
     update() {},
   },
+
+  // Насмотревшись в стену, кот идёт под часы.
+  //
+  // «Под часами» — не постоянная мировая точка: часы висят на слое стены
+  // и едут медленнее пола, так что нужное место зависит от того, где встанет
+  // камера. Гнаться за уезжающей целью каждый кадр бесполезно, она успокоится
+  // только вместе с камерой; поэтому место считается сразу, один раз
+  // (см. clockStand в GameScene).
+  [STATE.GOING_TO_CLOCK]: {
+    enter(cat, intent) {
+      cat.wakeSeq = intent.seq;
+      cat.clockStandX = cat.deps.clockStand(cat.x);
+      cat.face(Math.sign(cat.clockStandX - cat.x) || cat.facing);
+      cat.sprite.play('cat-walk');
+    },
+    update(cat, dt, intent) {
+      if (intent.seq !== cat.wakeSeq) {
+        cat.setState(STATE.IDLE_STAND);
+        return;
+      }
+      const dir = Math.sign(cat.clockStandX - cat.x);
+      const next = cat.x + dir * CONFIG.CAT_SPEED * dt;
+      const done = dir === 0 || (dir > 0 ? next >= cat.clockStandX : next <= cat.clockStandX);
+      cat.x = done ? cat.clockStandX : next;
+      cat.sprite.x = cat.x;
+      if (done) cat.setState(STATE.CLOCK_WATCH);
+    },
+  },
+
+  // Смотрит на маятник. Кадр берётся прямо по его положению, а не анимацией:
+  // анимация шла бы по своему таймеру и разъехалась бы с часами за минуту.
+  [STATE.CLOCK_WATCH]: {
+    enter(cat, intent) {
+      cat.wakeSeq = intent.seq;
+      cat.backReady = false;
+      cat.playOnce('cat-front-sit', () => {
+        cat.backReady = true;
+        // Дальше кадры ставим сами, анимация тут только мешала бы.
+        cat.sprite.anims.stop();
+      });
+      cat.deps.onWallStare(true);
+    },
+    update(cat, dt, intent) {
+      if (intent.seq !== cat.wakeSeq) {
+        intent.clearTarget();
+        intent.consumeAction();
+        cat.setState(STATE.WALL_RISE);
+        return;
+      }
+      if (!cat.backReady) return;
+      // Отражённому спрайту взгляд тоже отражается, иначе кот следил бы
+      // за маятником в противоход.
+      const look = cat.sprite.flipX ? -cat.deps.pendulumLook() : cat.deps.pendulumLook();
+      cat.sprite.setTexture(lookFrame(look));
+    },
+    exit(cat) {
+      cat.deps.onWallStare(false);
+    },
+  },
+
 };
 
 export class Cat {

@@ -7,6 +7,12 @@ const range = (prefix, count) => Array.from({ length: count }, (_, i) => prefix 
 
 export const SLEEP_POSE_KEYS = Object.keys(POSE_ART);
 
+// Кадры взгляда вбок. Это не анимация: кадр выбирается прямо по положению
+// маятника часов, иначе кот следил бы за своим ритмом, а не за часами.
+export const LOOK_FRAMES = 11;
+export const lookFrame = (v) =>
+  'cat_frontlook_' + Math.round(((Math.max(-1, Math.min(1, v)) + 1) / 2) * (LOOK_FRAMES - 1));
+
 // Ключи анимаций для позы сна. Место для сна хранит только имя позы,
 // а три её анимации выводятся отсюда.
 export const poseAnims = (pose) => ({

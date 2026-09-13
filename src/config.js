@@ -28,6 +28,9 @@ export const CONFIG = {
   PAPER_TILE: 512,
 
   IDLE_TIMEOUT: 25, // сек без ввода до ухода в стену
+  // Сколько кот сидит у стены, прежде чем ему это надоест и он пойдёт
+  // смотреть на маятник часов.
+  CLOCK_WATCH_AFTER: 180,
   MICRO_EVENT_MIN: 4,
   MICRO_EVENT_MAX: 12,
   MICRO_EVENT_DECAY: 1.15, // во сколько раз растёт интервал за каждое событие

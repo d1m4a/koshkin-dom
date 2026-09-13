@@ -43,6 +43,11 @@ export class PendulumClock {
       .setDepth(CONFIG.DEPTH.WALL + 1);
   }
 
+  // Где сейчас маятник, -1..1. По этому числу кот и водит за ним взглядом.
+  look() {
+    return this.img.rotation / SWING;
+  }
+
   // phase — позиция петли тиканья в секундах или null, если звука нет.
   update(time, phase) {
     const t = phase === null ? time / 1000 : phase;
