@@ -13,11 +13,11 @@ export const SPOTS = [
   {
     id: 'radiator',
     label: 'Батарея',
-    poseLabel: 'Клубком',
+    poseLabel: 'Свесил лапы',
     x: 350,
-    surface: 0,
+    surface: 92, // верх батареи: кот лежит на ней, а не рядом
     facing: 'left',
-    pose: 'curl',
+    pose: 'drape',
     availableFrom: 18,
     availableTo: 6, // тепло держится всю ночь
     comfort: 5,

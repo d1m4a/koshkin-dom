@@ -15,8 +15,13 @@ import { pencilShape, pencilPath, strokePolylines, smoothClosed } from './pencil
 
 const PAD_X = 3;
 const PAD_Y = 4;
+// Запас снизу больше верхнего: у позы на батарее лапы и хвост свешиваются
+// НИЖЕ линии лап, а на четырёх пикселях их обрезало бы. Спрайт при этом
+// не съезжает — CAT_FOOT_OFFSET считается от того же запаса и всё возвращает
+// на место.
+const PAD_BOTTOM = 28;
 export const CAT_W = Math.ceil(CAT_SHAPE.width) + PAD_X * 2;
-export const CAT_H = Math.ceil(CAT_SHAPE.anchors.feetY) + PAD_Y * 2;
+export const CAT_H = Math.ceil(CAT_SHAPE.anchors.feetY) + PAD_Y + PAD_BOTTOM;
 export const CAT_FOOT_OFFSET = CAT_H - Math.round(CAT_SHAPE.anchors.feetY) - PAD_Y;
 
 const part = (name) => CAT_SHAPE.parts.find((p) => p.name === name);
