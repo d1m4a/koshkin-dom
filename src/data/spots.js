@@ -41,7 +41,7 @@ export const SPOTS = [
     label: 'Лежанка',
     poseLabel: 'Клубочек',
     x: 1030,
-    surface: 14, // высота подстилки между бортиками
+    surface: 12, // высота подстилки между бортиками
     facing: 'right',
     pose: 'round',
     availableFrom: 2,
