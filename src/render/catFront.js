@@ -51,6 +51,16 @@ const TAIL_DIP = 6;
 const EYE_LOOK = 3.4;
 const HEAD_SWAY = 1.8;
 
+// Наклон головы набок — поворот всего, что выше горла, вокруг точки у шеи.
+// Вес по точкам гасит поворот к плечам: без него на стыке головы и корпуса
+// вырастал излом, а сплайн силуэта держал его за угол и не скруглял.
+const TILT_PIVOT = [66, 76];
+const TILT_MAX = 0.21; // радиан, примерно двенадцать градусов
+// Вес спадает по четырём точкам вниз по шее. На двух спад был слишком резким:
+// на боку силуэта оставалась ступенька.
+const TILT_FADE = { 8: 0.6, 22: 0.6, 9: 0.3, 21: 0.3, 10: 0.1, 20: 0.1 };
+const tiltWeight = (i) => (i <= 7 || i === 23 ? 1 : TILT_FADE[i] || 0);
+
 const rot = (p, cx, cy, a) => {
   const dx = p[0] - cx;
   const dy = p[1] - cy;
@@ -62,11 +72,12 @@ const rot = (p, cx, cy, a) => {
 // earR:     0..1 — дёрнулось правое ухо, резко
 // earL:     0..1 — повело левым ухом, медленнее правого
 // tailSwing:-1..1 — хвост метёт по полу, минус влево, плюс вправо
+// tilt:     -1..1 — голова склонена набок
 // look:     -1..1 — кот провожает взглядом что-то, ходящее из стороны
 //                  в сторону: глаза уезжают вбок, голова чуть ведёт следом
 // breath:   0..1 — дыхание
 // meow:     0..1 — раскрытие рта
-export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSwing = 0, breath = 0, meow = 0, look = 0 } = {}) {
+export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSwing = 0, breath = 0, meow = 0, look = 0, tilt = 0 } = {}) {
   // Разворот к игроку изображается сжатием по горизонтали: кот как бы
   // поворачивается боком к нам. Отдельная анимация поворота не нужна.
   const sx = 0.35 + 0.65 * sit;
@@ -106,9 +117,12 @@ export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSw
 
   // Точки 0..2 — левое ухо, 3 — макушка, 4..6 — правое. Взгляд вбок ведёт
   // за собой верх головы: одни глаза без этого читаются косоглазием.
-  const bodyPts = BODY.map((p, i) =>
-    place(i <= 6 ? [p[0] + look * HEAD_SWAY, p[1]] : p, i <= 2 ? 'L' : i >= 4 && i <= 6 ? 'R' : null)
-  );
+  const bodyPts = BODY.map((p, i) => {
+    let q = i <= 6 ? [p[0] + look * HEAD_SWAY, p[1]] : p;
+    const w = tiltWeight(i);
+    if (tilt && w) q = rot(q, TILT_PIVOT[0], TILT_PIVOT[1], tilt * TILT_MAX * w);
+    return place(q, i <= 2 ? 'L' : i >= 4 && i <= 6 ? 'R' : null);
+  });
   pencilShape(g, smoothClosed(bodyPts, 6).map(([x, y]) => [x, y + PAD_Y]), { ...SKIN });
 
   // Глаза — узкие миндалины, а не круглые пятна: круг читается совой.
@@ -127,7 +141,8 @@ export function drawCatFront(g, { sit = 1, blink = 0, earR = 0, earL = 0, tailSw
       const u = i / steps;
       pts.push([ex - rx + 2 * rx * u, HEAD_Y + Math.sin(Math.PI * u) * down]);
     }
-    const eye = pts.map((p) => place(p));
+    // Глаза едут с головой целиком: они заведомо выше точки поворота.
+    const eye = pts.map((p) => place(tilt ? rot(p, TILT_PIVOT[0], TILT_PIVOT[1], tilt * TILT_MAX) : p));
     pencilShape(g, smoothClosed(eye, 3).map(([x, y]) => [x, y + PAD_Y]), { ...EYE });
   }
 

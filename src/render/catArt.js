@@ -12,7 +12,7 @@ import { HEX } from '../palette.js';
 import { pencilShape, pencilPath, pencilCircle, strokePolylines, bakeTexture } from './pencil.js';
 import { drawCatBody, drawCatPose, CAT_W as BODY_W, CAT_H as BODY_H } from './catBody.js';
 import { POSE_ART } from './catPoseArt.js';
-import { LOOK_FRAMES } from '../data/animations.js';
+import { LOOK_FRAMES, TILT_FRAMES } from '../data/animations.js';
 import { drawCatFront } from './catFront.js';
 
 export const CAT_TEX_W = 132;
@@ -56,6 +56,11 @@ export function makeCatTextures(scene) {
   const bakeFront = (key, opts) => bakeTexture(scene, key, BODY_W, BODY_H, (g) => drawCatFront(g, opts));
   for (let i = 0; i < 4; i++) bakeFront('cat_frontsit_' + i, { sit: i / 3 });
   [0, 0.6, 1].forEach((breath, i) => bakeFront('cat_front_' + i, { breath }));
+  // Наклон головы набок, в обе стороны от нуля.
+  for (let i = 0; i < TILT_FRAMES; i++) {
+    bakeFront('cat_fronttilt_' + i, { tilt: -1 + (2 * i) / (TILT_FRAMES - 1) });
+  }
+
   // Взгляд вбок: кадры на всю дугу маятника, от края до края.
   for (let i = 0; i < LOOK_FRAMES; i++) {
     bakeFront('cat_frontlook_' + i, { look: -1 + (2 * i) / (LOOK_FRAMES - 1) });

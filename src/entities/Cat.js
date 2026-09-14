@@ -271,6 +271,8 @@ const STATES = {
     enter(cat, intent) {
       cat.wakeSeq = intent.seq;
       cat.backReady = false;
+      cat.tilting = false;
+      cat.tiltTimer = cat.nextTiltDelay();
       cat.playOnce('cat-front-sit', () => {
         cat.backReady = true;
         // Дальше кадры ставим сами, анимация тут только мешала бы.
@@ -286,6 +288,21 @@ const STATES = {
         return;
       }
       if (!cat.backReady) return;
+
+      // Иногда кот отрывается от маятника и склоняет голову набок. Пока идёт
+      // этот жест, кадры ставит анимация, а не слежение за часами — иначе
+      // они дрались бы за одну и ту же текстуру.
+      if (cat.tilting) return;
+      cat.tiltTimer -= dt;
+      if (cat.tiltTimer <= 0) {
+        cat.tiltTimer = cat.nextTiltDelay();
+        cat.tilting = true;
+        cat.playOnce(Math.random() < 0.5 ? 'cat-front-tilt' : 'cat-front-tilt2', () => {
+          cat.tilting = false;
+        });
+        return;
+      }
+
       // Отражённому спрайту взгляд тоже отражается, иначе кот следил бы
       // за маятником в противоход.
       const look = cat.sprite.flipX ? -cat.deps.pendulumLook() : cat.deps.pendulumLook();
@@ -369,6 +386,10 @@ export class Cat {
   // сколько бы он ни сидел.
   nextBlinkDelay() {
     return CONFIG.BLINK_MIN + Math.random() * (CONFIG.BLINK_MAX - CONFIG.BLINK_MIN);
+  }
+
+  nextTiltDelay() {
+    return CONFIG.TILT_MIN + Math.random() * (CONFIG.TILT_MAX - CONFIG.TILT_MIN);
   }
 
   nextMeowDelay() {

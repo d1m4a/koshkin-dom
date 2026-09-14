@@ -10,6 +10,17 @@ export const SLEEP_POSE_KEYS = Object.keys(POSE_ART);
 // Кадры взгляда вбок. Это не анимация: кадр выбирается прямо по положению
 // маятника часов, иначе кот следил бы за своим ритмом, а не за часами.
 export const LOOK_FRAMES = 11;
+
+// Наклон головы набок. Кадры печём в обе стороны от нуля, нулевой —
+// посередине, и обе анимации берут их с общего набора.
+export const TILT_FRAMES = 9;
+const tiltSeq = (dir) => {
+  const mid = (TILT_FRAMES - 1) / 2;
+  const f = (k) => 'cat_fronttilt_' + (mid + dir * k);
+  // Наклонился, подержал и вернулся: без задержки в крайней точке жест
+  // читается нервным подёргиванием, а не разглядыванием.
+  return [f(0), f(1), f(2), f(3), f(4), f(4), f(4), f(4), f(4), f(3), f(2), f(1), f(0)];
+};
 export const lookFrame = (v) =>
   'cat_frontlook_' + Math.round(((Math.max(-1, Math.min(1, v)) + 1) / 2) * (LOOK_FRAMES - 1));
 
@@ -40,12 +51,14 @@ export const ANIMS = [
   // Второе ухо ведёт медленнее первого: и кадров больше, и частота ниже.
   { key: 'cat-front-ear2', frames: range('cat_frontear2_', 7), frameRate: 6, repeat: 0 },
   { key: 'cat-front-tail', frames: range('cat_fronttail_', 28), frameRate: 12, repeat: 0 },
+  { key: 'cat-front-tilt', frames: tiltSeq(1), frameRate: 9, repeat: 0 },
+  { key: 'cat-front-tilt2', frames: tiltSeq(-1), frameRate: 9, repeat: 0 },
 ];
 
 // Микрособытия у стены: раз в несколько секунд проигрывается одно из них.
 // Моргание и мяуканье вынесены из микрособытий: у них свой темп, чаще
 // и независимо от растущего интервала залипания.
-export const MICRO_EVENTS = ['cat-front-ear', 'cat-front-ear2', 'cat-front-tail'];
+export const MICRO_EVENTS = ['cat-front-ear', 'cat-front-ear2', 'cat-front-tail', 'cat-front-tilt', 'cat-front-tilt2'];
 
 export function registerAnimations(scene) {
   for (const a of ANIMS) {
